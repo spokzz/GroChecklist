@@ -20,6 +20,7 @@ class EmailLoginVC: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        addSingleTapGesture()
     }
     
     //VIEW WILL APPEAR:
@@ -36,7 +37,7 @@ class EmailLoginVC: UIViewController {
         }
     }
     
-    //CHECK THE BUTTON PRESSED ON LOGINVC
+    //PASS THE SELECTED BUTTON TITLE FROM LOGINVC
     func checkButtonPressed(buttonTitle: String) {
         
         self.buttonPressed = buttonTitle
@@ -48,8 +49,7 @@ class EmailLoginVC: UIViewController {
             if emailTextField.text != nil && passwordTextField.text != nil {
                 AuthService.instance.loginUser(withEmail: emailTextField.text!, andPassword: passwordTextField.text!, loginCompletion: { (successful, loginError) in
                     if successful {
-                        guard let searchUserVC = self.storyboard?.instantiateViewController(withIdentifier: "searchUserVC") else {return}
-                        self.present(searchUserVC, animated: true, completion: nil)
+                        self.performSegue(withIdentifier: "unwindToMoreVC", sender: nil)
                     } else {
                         print("Login Error: \(String(describing: loginError!.localizedDescription))")
                         if loginError!.localizedDescription == "The password is invalid or the user does not have a password."{
@@ -69,8 +69,7 @@ class EmailLoginVC: UIViewController {
                     if registrationSuccess {
                         AuthService.instance.loginUser(withEmail: self.emailTextField.text!, andPassword: self.passwordTextField.text!, loginCompletion: { (loginSuccess, loginError) in
                             if loginSuccess {
-                                guard let searchUserVC = self.storyboard?.instantiateViewController(withIdentifier: "searchUserVC") else {return}
-                                self.present(searchUserVC, animated: true, completion: nil)
+                                self.performSegue(withIdentifier: "unwindToMoreVC", sender: nil)
                             } else {
                                 print("Login Error: \(String(describing: loginError?.localizedDescription))")
                             }
@@ -86,15 +85,37 @@ class EmailLoginVC: UIViewController {
         
     }
     
+    //ADD TAP GESTURE (SINGLE TAP)
+    private func addSingleTapGesture() {
+        
+        let singleTap = UITapGestureRecognizer(target: self, action: #selector(singleTapped))
+        singleTap.numberOfTapsRequired = 1
+        self.view.addGestureRecognizer(singleTap)
+        
+    }
+    
+    //USER TAPPED ON A SCREEN:
+    @objc func singleTapped() {
+        emailTextField.endEditing(true)
+        passwordTextField.endEditing(true)
+    }
+    
     //BACK BUTTON PRESSED:
     @IBAction func backButtonPressed(_ sender: UIButton) {
         
-        dismiss(animated: true, completion: nil)
+        dismissViewController()
     }
     
 
 }
 
+extension EmailLoginVC: UITextFieldDelegate {
+    
+    func textFieldDidBeginEditing(_ textField: UITextField) {
+        self.errorLabel.text = ""
+    }
+    
+}
 
 
 

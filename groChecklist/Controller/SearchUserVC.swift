@@ -13,32 +13,58 @@ class SearchUserVC: UIViewController {
 
     @IBOutlet weak var nextButton: UIButton!
     @IBOutlet weak var searchTableView: UITableView!
-    @IBOutlet weak var searchTextField: customSearchTextField!
+    @IBOutlet weak var informationStackView: UIStackView!
     
-    var emailArray = [String]()
-    var membersArray = [String]()
+    private var emailArray = [String]()
+    private var membersArray = [String]()
+    private var userIdsArray = [String]()
     
-    var dateFormatter = DateFormatter()
+    private var dateFormatter = DateFormatter()
     
+    //VIEW DID LOAD:
     override func viewDidLoad() {
         super.viewDidLoad()
         searchTableView.delegate = self
         searchTableView.dataSource = self
-        searchTextField.delegate = self
-        searchTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
         dateFormatter.dateFormat = "MMM d, yyyy"
 
     }
     
+    //VIEW WILL APPEAR"
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         nextButton.isHidden = true
+        
+        DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) { (returnedFriendList) in
+            DataService.instance.getEmail(forUID: returnedFriendList[0].addedFriendUID, completion: { (returnedEmail) in
+                if returnedFriendList.isEmpty && returnedFriendList[0].status != 2{
+                    self.searchTableView.isHidden = true
+                    self.informationStackView.isHidden = false
+                    
+                } else {
+                   self.emailArray.append(returnedEmail)
+                    self.userIdsArray.append(returnedFriendList[0].addedFriendUID)
+                    self.searchTableView.isHidden = false
+                    self.informationStackView.isHidden = true
+                    self.searchTableView.reloadData()
+                }
+                
+            })
+        }
+    }
+    
+    //VIEW WILL DISAPPEAR:
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        self.emailArray = []
+        self.membersArray = []
+        self.userIdsArray = []
     }
 
     //BACK BUTTON PRESSED:
     @IBAction func backButtonPressed(_ sender: UIButton) {
         
-        performSegue(withIdentifier: "unwindToGroupsVC", sender: nil)
+        dismissViewController()
         membersArray = []
     }
     
@@ -49,39 +75,22 @@ class SearchUserVC: UIViewController {
         let todayDate = Date()
         let todayDateString = dateFormatter.string(from: todayDate)
         
-        DataService.instance.getUserdIds(forEmail: membersArray) { (returnedUid) in
-            var idsArray = returnedUid
-            idsArray.append((Auth.auth().currentUser?.uid)!)
+            self.userIdsArray.append((Auth.auth().currentUser?.uid)!)
             
-            DataService.instance.createGroup(withDate: todayDateString, andTotalAmount: "0.0", forUserIds: idsArray,  completion: { (groupCreated) in
+            DataService.instance.createGroup(withDate: todayDateString, andTotalAmount: "0.0", forUserIds: userIdsArray,  completion: { (groupCreated) in
                 if groupCreated {
                     DataService.instance.getAllGroups(completion: { (groupsArray) in
                         guard let addItemsVC = self.storyboard?.instantiateViewController(withIdentifier: "addItemsVC") as? AddItemsVC else {return}
                         addItemsVC.initData(forGroup: groupsArray[0])
-                        self.present(addItemsVC, animated: true, completion: nil)
+                        self.presentVCFromRightSide(withViewController: addItemsVC)
                         self.nextButton.isEnabled = true
                     })
                 } else {
                     self.nextButton.isEnabled = true
                 }
-            })
-        }
-        }
-    
-    //SEARCH TEXT FIELD TEXT CHANGED:
-    @objc func textFieldDidChange() {
-        
-        if searchTextField.text == "" {
-            emailArray = []
-            searchTableView.reloadData()
-        } else {
-            DataService.instance.getEmail(forSearchQuery: searchTextField.text!, completion: { (returnedEmail) in
-                self.emailArray = returnedEmail
-                self.searchTableView.reloadData()
-            })
+        })
         }
     }
-}
 
 
 //TABLE VIEW:
@@ -97,10 +106,10 @@ extension SearchUserVC: UITableViewDataSource, UITableViewDelegate {
        guard let cell = tableView.dequeueReusableCell(withIdentifier: "searchUserCell", for: indexPath) as? SearchUserCell else {return UITableViewCell()}
         if membersArray.contains(emailArray[indexPath.row]) {
             cell.configureCell(userImage: "sakar", userEmail: emailArray[indexPath.row], imageShow: true)
+            
         } else {
              cell.configureCell(userImage: "sakar", userEmail: emailArray[indexPath.row], imageShow: false)
         }
-        
         return cell
     }
     
@@ -119,10 +128,6 @@ extension SearchUserVC: UITableViewDataSource, UITableViewDelegate {
     
 }
 
-//UITEXTFIELD DELEGATE
-extension SearchUserVC: UITextFieldDelegate {
-    
-}
 
 //SAVE EMAIL FROM SEARCH LIST.
 extension SearchUserVC {

@@ -12,22 +12,54 @@ import Firebase
 class GroupsVC: UIViewController {
 
     @IBOutlet weak var groupTableView: UITableView!
+    @IBOutlet weak var informationStackView: UIStackView!
     
-    var groupsArray = [Groups]()
+    private var groupsArray = [Groups]()
+    private var spinner: UIActivityIndicatorView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
         groupTableView.delegate = self
         groupTableView.dataSource = self
+        addSpinner()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        DataService.instance.getAllGroups { (allGroups) in
-            self.groupsArray = allGroups
-            self.groupTableView.reloadData()
+        
+        spinner.startAnimating()
+        
+        if Auth.auth().currentUser?.uid != nil {
+            groupTableView.isHidden = false
+            informationStackView.isHidden = true
+            DataService.instance.getAllGroups { (allGroups) in
+                self.groupsArray = allGroups
+                
+                if allGroups.isEmpty {
+                    self.groupTableView.isHidden = true
+                    self.informationStackView.isHidden = false
+                   
+                } else {
+                    self.groupTableView.isHidden = false
+                    self.informationStackView.isHidden = true
+                    self.groupTableView.reloadData()
+                   
+                }
+                self.spinner.removeFromSuperview()
+            }
+        }  else {
+            groupTableView.isHidden = true
+            informationStackView.isHidden = false
+            self.spinner.removeFromSuperview()
         }
+        
+    }
+    
+    //VIEW WILL DISAPPEAR:
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        self.spinner.removeFromSuperview()
     }
 
     //ADD GROUP BUTTON PRESSED:
@@ -40,13 +72,36 @@ class GroupsVC: UIViewController {
             present(loginVC, animated: true, completion: nil)
         } else {
             guard let searchUserVC = storyboard?.instantiateViewController(withIdentifier: "searchUserVC") else {return }
-            present(searchUserVC, animated: true, completion: nil)
+            presentVCFromRightSide(withViewController: searchUserVC)
         }
+    }
+    
+    //ADD BUTTON PRESSED (INFORMATION STACK VIEW:)
+    @IBAction func infoAddButtonPressed(_ sender: UIButton) {
+        
+        //If nobody has loggedIn yet or it's logged out.
+        if Auth.auth().currentUser == nil {
+            
+            guard let loginVC = storyboard?.instantiateViewController(withIdentifier: "loginVC") else {return}
+            present(loginVC, animated: true, completion: nil)
+        } else {
+            guard let searchUserVC = storyboard?.instantiateViewController(withIdentifier: "searchUserVC") else {return }
+            presentVCFromRightSide(withViewController: searchUserVC)
+        }
+        
     }
     
     //UNWIND SEGUE:
     @IBAction func unwindToGroupsVC(segue: UIStoryboardSegue) { }
+    
+    //ADD UIACTIVITY INDICATOR VIEW
+    private func addSpinner() {
         
+        spinner = UIActivityIndicatorView(activityIndicatorStyle: .gray)
+        spinner.center = self.view.center
+        spinner.color = #colorLiteral(red: 0.2549019754, green: 0.2745098174, blue: 0.3019607961, alpha: 1)
+        self.view.addSubview(spinner)
+    }
 
 }
 
@@ -58,6 +113,7 @@ extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
        guard let cell = tableView.dequeueReusableCell(withIdentifier: "groupsCell", for: indexPath) as? GroupsCell else {return UITableViewCell()}
         let groupToShow = groupsArray[indexPath.row]
         cell.configureCell(date: groupToShow.groupCreatedDate, totalPrice: groupToShow.totalAmount, userImage1: "ishwor", userImage2: "sakar", userImage3: "alien")
@@ -119,6 +175,10 @@ extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
                     DataService.instance.getAllGroups { (allGroups) in
                         self.groupsArray = allGroups
                         self.groupTableView.reloadData()
+                        if self.groupsArray.isEmpty {
+                            self.groupTableView.isHidden = true
+                            self.informationStackView.isHidden = false
+                        }
                     }
                 }
             })

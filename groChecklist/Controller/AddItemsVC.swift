@@ -15,16 +15,17 @@ class AddItemsVC: UIViewController {
     @IBOutlet weak var itemEntryTextField: UITextField!
     @IBOutlet weak var saveButton: UIButton!
     @IBOutlet weak var numberOfItemsLabel: UILabel!
+    @IBOutlet weak var backButton: UIButton!
     
-    var numberOfItems: Int = 1
-    var itemsArray = [Items]()
-    var itemsArrayReversed = [Items]()
-    var newItemsArray = [Items]()
+    private var numberOfItems: Int = 1
+    private var itemsArray = [Items]()
+    private var itemsArrayReversed = [Items]()
+    private var newItemsArray = [Items]()
     private var groceryItems = [GroceryItem]()
     
-    var group: Groups?
+    private var group: Groups?
     
-    var createdList: CreatedList!
+     var createdList: CreatedList!
     
     //VIEW DID LOAD:
     override func viewDidLoad() {
@@ -40,16 +41,21 @@ class AddItemsVC: UIViewController {
     //VIEW WILL APPEAR:
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        backButton.isHidden = false
         newItemsArray = []
         groceryItems = []
+        if group != nil {
+            backButton.isHidden = true
+        }
     }
     
+    //TAKES GROUP FROM SEARCHUSERVC
     func initData(forGroup group: Groups) {
         self.group = group
     }
     
     //ADD TAP GESTURE (SINGLE TAP)
-    func addTapGesture() {
+    private func addTapGesture() {
         let dismiss = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         self.view.addGestureRecognizer(dismiss)
     }
@@ -84,10 +90,11 @@ class AddItemsVC: UIViewController {
     @IBAction func backButtonPressed(_ sender: UIButton) {
         if group != nil {
             self.groceryItems = []
+            self.dismissViewController()
         } else {
             deleteCreatedList { (success) in
                 if success {
-                    self.dismiss(animated: true, completion: nil)
+                    self.dismissViewController()
                 }
             }
         }
@@ -103,7 +110,7 @@ class AddItemsVC: UIViewController {
                 self.performSegue(withIdentifier: "unwindToGroups", sender: nil)
             })
         } else {
-            dismiss(animated: true, completion: nil)
+            dismissViewController()
         }
        
     }

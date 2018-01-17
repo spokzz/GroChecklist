@@ -30,7 +30,7 @@ class LoginVC: UIViewController {
         
         guard let emailLoginVC = storyboard?.instantiateViewController(withIdentifier: "emailLoginVC") as? EmailLoginVC else {return }
         emailLoginVC.checkButtonPressed(buttonTitle: "email")
-        present(emailLoginVC, animated: true, completion: nil)
+        presentVCFromRightSide(withViewController: emailLoginVC)
         
     }
     
@@ -38,7 +38,7 @@ class LoginVC: UIViewController {
         
         guard let emailLoginVC = storyboard?.instantiateViewController(withIdentifier: "emailLoginVC") as? EmailLoginVC else {return }
         emailLoginVC.checkButtonPressed(buttonTitle: "signup")
-        present(emailLoginVC, animated: true, completion: nil)
+        presentVCFromRightSide(withViewController: emailLoginVC)
         
     }
     

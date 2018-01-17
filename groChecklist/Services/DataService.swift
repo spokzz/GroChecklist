@@ -10,6 +10,7 @@ import Foundation
 import Firebase
 
 let DB_BASE = Database.database().reference()
+//0 - pending, 1 - Accept, 2 - friends. (Status in Database)
 
 class DataService {
     
@@ -18,6 +19,7 @@ class DataService {
     private var _REF_BASE = DB_BASE
     private var _REF_USERS = DB_BASE.child("Users")
     private var _REF_GROUPS = DB_BASE.child("Groups")
+    private var _REF_FRIENDS = DB_BASE.child("Friends")
     
     var REF_BASE: DatabaseReference {
         return _REF_BASE
@@ -30,6 +32,12 @@ class DataService {
     var REF_GROUPS: DatabaseReference {
         return _REF_GROUPS
     }
+    
+    var REF_FRIENDS: DatabaseReference {
+        return _REF_FRIENDS
+    }
+    
+    
     
     //ADD UID AND USERDATA IN "USERS" FOLDER IN DATABASE.
     func createDBUser(uid: String, userData: Dictionary<String, Any>) {
@@ -90,6 +98,31 @@ class DataService {
         }
     }
     
+    //GET EMAIL FROM UID
+    func getEmail(forUID uid: String, completion: @escaping (_ sender: String) -> ()) {
+        
+        REF_USERS.child(uid).observeSingleEvent(of: .value) { (dataSnapshot) in
+            
+            guard let email = dataSnapshot.childSnapshot(forPath: "email").value as? String else {return}
+               completion(email)
+        
+            
+//
+//
+//            guard let dataSnapshot = dataSnapshot.children.allObjects as? [DataSnapshot] else {return}
+//
+//            for data in dataSnapshot {
+//
+//                let email = data.childSnapshot(forPath: "email").value as! String
+//                userEmail = email
+//            }
+            
+            
+        }
+        
+        
+    }
+    
     //UPLOAD ITEMS IN GROUP:
     func uploadItemsInGroup(withItems itemsArray: [GroceryItem], forGroupKey groupKey: String, uploadCompletion: @escaping (_ sender: Bool) -> ()) {
         
@@ -123,6 +156,7 @@ class DataService {
         }
     }
     
+    
     //RETURN ALL ITEMS OF SPECIFIC GROUPS:
     func getAllItems(forGroup group: Groups, completion: @escaping (_ sender: [GroceryItem]) -> ()) {
         var itemsArray = [GroceryItem]()
@@ -141,6 +175,33 @@ class DataService {
                 
             }
             completion(itemsArray)
+        }
+    }
+    
+    //ADD FRIENDS IN DATABSE.
+    func createFriends(withUserID uid: String, withFriendUID fid: String, status: Int) {
+        REF_FRIENDS.child(uid).childByAutoId().updateChildValues(["AddedFriend": fid, "status": status])
+    }
+    
+    
+    
+    //RETURN ALL FRIENDS LIST.
+    func getFriendsList(userID uid: String, completion: @escaping (_ sender: [FriendList]) -> ()) {
+        var friendsArray = [FriendList]()
+        
+        REF_FRIENDS.child(uid).observeSingleEvent(of: .value) { (friendListSnapshot) in
+            guard let friendListSnapshot = friendListSnapshot.children.allObjects as? [DataSnapshot] else {return}
+            
+            for friendList in friendListSnapshot {
+                    
+                    let addedFriend = friendList.childSnapshot(forPath: "AddedFriend").value as! String
+                    let status = friendList.childSnapshot(forPath: "status").value as! Int
+                    
+                let friendListArray = FriendList(addedFriendUID: addedFriend, status: status, key: friendList.key, friendEmail: nil)
+                friendsArray.append(friendListArray)
+                
+            }
+            completion(friendsArray)
         }
     }
     
@@ -164,6 +225,21 @@ class DataService {
         REF_GROUPS.child(key).removeValue()
         completion(true)
     }
+    
+    //EDIT FRIEND LIST STATUS IN DATABASE:
+    func editFriendStatus(withUserID uid: String, friendListkey key: String, statusValue value: Int, completion: @escaping (_ sender: Bool) -> ()) {
+        
+        REF_FRIENDS.child(uid).child(key).child("status").setValue(value)
+        completion(true)
+    }
+    
+    //DELETE FRIENDS FROM FRIEND LIST IN DATABSE:
+    func deleteFriends(ofUID uid: String, withKey key: String, completion: @escaping (_ status: Bool) -> ()) {
+        
+        REF_FRIENDS.child(uid).child(key).removeValue()
+        completion(true)
+    }
+    
     
     
 }

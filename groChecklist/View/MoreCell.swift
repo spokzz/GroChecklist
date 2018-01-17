@@ -16,8 +16,6 @@ class MoreCell: UITableViewCell {
     func configureCell(withTitle title: String) {
         
         self.settingsTitle.text = title
-        self.rightArrowImageView.image = UIImage(named: "rightArrow")
-        
     }
 
 }

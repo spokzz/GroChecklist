@@ -14,10 +14,11 @@ let appDelegate = UIApplication.shared.delegate as? AppDelegate
 class HomeVC: UIViewController {
 
     @IBOutlet weak var homeTableView: UITableView!
+    @IBOutlet weak var informationStackView: UIStackView!
     
-    var dateFormatter = DateFormatter()
-    var createdListArray = [CreatedList]()
-    var createdListArrayReversed = [CreatedList]()
+    private var dateFormatter = DateFormatter()
+    private var createdListArray = [CreatedList]()
+    private var createdListArrayReversed = [CreatedList]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,11 +29,21 @@ class HomeVC: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
         fetchData { (success) in
             if success {
-                self.homeTableView.reloadData()
+                if self.createdListArrayReversed.isEmpty {
+                    self.informationStackView.isHidden = false
+                    self.homeTableView.isHidden = true
+                } else {
+                    self.homeTableView.reloadData()
+                    self.informationStackView.isHidden = true
+                    self.homeTableView.isHidden = false
+                }
+                
             }
         }
+        
         
     }
     
@@ -44,11 +55,27 @@ class HomeVC: UIViewController {
         fetchData { (success) in
             if success {
                 addItemsVC.createdList = self.createdListArrayReversed[0]
-                self.present(addItemsVC, animated: true, completion: nil)
+                self.presentVCFromRightSide(withViewController: addItemsVC)
             } else {
                 print("Unsuccessful")
             }
         }
+    }
+    
+    
+    @IBAction func infoAddButtonPressed(_ sender: UIButton) {
+        
+        saveCreatedListData()
+        guard let addItemsVC = storyboard?.instantiateViewController(withIdentifier: "addItemsVC") as? AddItemsVC else {return }
+        fetchData { (success) in
+            if success {
+                addItemsVC.createdList = self.createdListArrayReversed[0]
+                self.presentVCFromRightSide(withViewController: addItemsVC)
+            } else {
+                print("Unsuccessful")
+            }
+        }
+        
     }
     
 }
@@ -63,6 +90,7 @@ extension HomeVC: UITableViewDelegate, UITableViewDataSource {
     
     //CELL FOR ROW:
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "homeCell", for: indexPath) as? HomeCell else {return UITableViewCell()}
         let list = createdListArrayReversed[indexPath.row]
         cell.customizeCell(groceryDate: list.date!, totalPrice: "Total Price: $\(list.total)")
@@ -123,6 +151,10 @@ extension HomeVC: UITableViewDelegate, UITableViewDataSource {
                         if fetched {
                             tableView.deleteRows(at: [indexPath], with: .fade)
                             self.homeTableView.reloadData()
+                            if self.createdListArrayReversed.isEmpty {
+                                self.homeTableView.isHidden = true
+                                self.informationStackView.isHidden = false
+                            }
                         }
                     })
                 }
