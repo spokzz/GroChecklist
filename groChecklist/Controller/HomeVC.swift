@@ -9,44 +9,68 @@
 import UIKit
 import CoreData
 
+var coreDataTotalAmount: Double!
+
 let appDelegate = UIApplication.shared.delegate as? AppDelegate
 
 class HomeVC: UIViewController {
 
     @IBOutlet weak var homeTableView: UITableView!
     @IBOutlet weak var informationStackView: UIStackView!
+    @IBOutlet weak var topViewHeight: NSLayoutConstraint!
     
     private var dateFormatter = DateFormatter()
     private var createdListArray = [CreatedList]()
     private var createdListArrayReversed = [CreatedList]()
     
+    
+    //VIEW DID LOAD:
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        topViewHeight.editTopViewHeight()
         homeTableView.delegate = self
         homeTableView.dataSource = self
         dateFormatter.dateFormat = "MMM d, yyyy"
     }
     
+    //VIEW WILL APPEAR:
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         fetchData { (success) in
-            if success {
-                if self.createdListArrayReversed.isEmpty {
-                    self.informationStackView.isHidden = false
-                    self.homeTableView.isHidden = true
-                } else {
-                    self.homeTableView.reloadData()
-                    self.informationStackView.isHidden = true
-                    self.homeTableView.isHidden = false
-                }
-                
+            self.listFetched(completed: success)
+        }
+        calculateTotalAmount()
+    }
+    
+    //RETURNS VIEW APPEARANCE BASED ON VALUE FETCHED RESULT:
+    private func listFetched(completed: Bool) {
+        
+        if completed {
+            if self.createdListArrayReversed.isEmpty {
+                self.informationStackView.isHidden = false
+                self.homeTableView.isHidden = true
+            } else {
+                self.homeTableView.reloadData()
+                self.informationStackView.isHidden = true
+                self.homeTableView.isHidden = false
             }
         }
         
-        
     }
     
+    //Calculates the totalAmount of Core Data:
+    private func calculateTotalAmount() {
+        var totalAmount = Double()
+        
+        for list in createdListArray {
+            totalAmount += list.total
+        }
+        
+        coreDataTotalAmount = totalAmount.round(to: 2)
+    }
+        
     //ADD BUTTON PRESSED:
     @IBAction func addButtonPressed(_ sender: UIButton) {
         
@@ -101,8 +125,16 @@ extension HomeVC: UITableViewDelegate, UITableViewDataSource {
     //ROW SELECTED:
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
+        addAlertController(indexPath: indexPath, tableView: tableView)
+        
+    }
+    
+    //IT WILL ADD ALERT CONTROLLER WITH DIFFERENT OPTIONS:
+    func addAlertController(indexPath: IndexPath, tableView: UITableView) {
+        
         let alertController = UIAlertController(title: nil, message: "\(createdListArrayReversed[indexPath.row].date!)", preferredStyle: .actionSheet)
         
+        //VIEW:
         let viewAction = UIAlertAction(title: "VIEW", style: .default) { (view) in
             
             guard let viewItemsVC = self.storyboard?.instantiateViewController(withIdentifier: "viewItemsVC") as? ViewItemsVC else {return}
@@ -115,7 +147,7 @@ extension HomeVC: UITableViewDelegate, UITableViewDataSource {
             }
         }
         
-        //Add total Price:
+        //Edit Total:
         let addtotalAction = UIAlertAction(title: "EDIT TOTAL", style: .default) { (addTotal) in
             
             let alert = UIAlertController(title: "Edit Total:", message: "", preferredStyle: UIAlertControllerStyle.alert)
@@ -124,11 +156,15 @@ extension HomeVC: UITableViewDelegate, UITableViewDataSource {
                 let textField = alert.textFields![0] as UITextField
                 if textField.text != "" {
                     if let totalPriceInDouble = Double(textField.text!) {
-                        self.editTotalPrice(indexPath: indexPath, totalPrice: totalPriceInDouble)
+                        
+                        let roundedDoubleValue = totalPriceInDouble.round(to: 2)
+                        
+                        self.editTotalPrice(indexPath: indexPath, totalPrice: roundedDoubleValue)
                         self.homeTableView.reloadData()
+                        self.calculateTotalAmount()
                     }
                 }
-                })
+            })
             
             alert.addTextField { (textField : UITextField!) -> Void in
                 self.editTotalTextField(textField: textField)
@@ -142,7 +178,7 @@ extension HomeVC: UITableViewDelegate, UITableViewDataSource {
             self.present(alert, animated: true, completion: nil)
         }
         
-        //Delete Action:
+        //Delete:
         let deleteAction = UIAlertAction(title: "DELETE", style: .destructive) { (deleteRow) in
             
             self.deleteCreatedList(indexPath: indexPath, completion: { (deleted) in
@@ -153,6 +189,7 @@ extension HomeVC: UITableViewDelegate, UITableViewDataSource {
                             self.homeTableView.reloadData()
                             if self.createdListArrayReversed.isEmpty {
                                 self.homeTableView.isHidden = true
+                                self.calculateTotalAmount()
                                 self.informationStackView.isHidden = false
                             }
                         }
@@ -161,7 +198,7 @@ extension HomeVC: UITableViewDelegate, UITableViewDataSource {
             })
         }
         
-        //Cancel Action:
+        //Cancel:
         let cancelAction = UIAlertAction(title: "CANCEL", style: .cancel, handler: nil)
         
         alertController.addAction(viewAction)

@@ -16,6 +16,7 @@ class AddItemsVC: UIViewController {
     @IBOutlet weak var saveButton: UIButton!
     @IBOutlet weak var numberOfItemsLabel: UILabel!
     @IBOutlet weak var backButton: UIButton!
+    @IBOutlet weak var topViewHeight: NSLayoutConstraint!
     
     private var numberOfItems: Int = 1
     private var itemsArray = [Items]()
@@ -31,10 +32,12 @@ class AddItemsVC: UIViewController {
     override func viewDidLoad() {
         
         super.viewDidLoad()
-        addTapGesture()
+        
+        topViewHeight.editTopViewHeight()
         itemTableView.delegate = self
         itemTableView.dataSource = self
         saveButton.isHidden = true
+        addTapGesture()
         
     }
     

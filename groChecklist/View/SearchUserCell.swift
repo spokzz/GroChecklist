@@ -14,18 +14,6 @@ class SearchUserCell: UITableViewCell {
     @IBOutlet weak var userEmailLabel: UILabel!
     @IBOutlet weak var checkedImageView: UIImageView!
     
-    func configureCell(userImage: String, userEmail: String, imageShow: Bool) {
-        
-        self.userImageView.image = UIImage(named: userImage)
-        self.userEmailLabel.text = userEmail
-        
-        if imageShow {
-            self.checkedImageView.isHidden = false
-        } else {
-            self.checkedImageView.isHidden = true
-        }
-    }
-    
     //CELL IS SELECTED:
     override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)

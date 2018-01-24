@@ -10,6 +10,8 @@ import UIKit
 import CoreData
 import Firebase
 
+var deviceType: String?
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
@@ -19,6 +21,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         
         FirebaseApp.configure()
+        checkDeviceSize()
         
         return true
     }
@@ -91,6 +94,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
     }
+    
+    //RETURNS DEVICE MODEL:
+    private func checkDeviceSize() {
+        
+        if UIDevice().userInterfaceIdiom == .phone {
+            
+            switch UIScreen.main.nativeBounds.height {
+                
+            case 2208.0:
+               deviceType = "iphone 8 Plus"
+                
+            case 2436.0:
+                deviceType = "iphone X"
+                
+            default:
+                deviceType = "iphone 8"
+                
+                
+            }
+        }
+    }
 
 }
+
+
+
+
+
+
+
+
 

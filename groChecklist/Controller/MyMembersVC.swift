@@ -12,9 +12,12 @@ import Firebase
 class MyMembersVC: UIViewController {
 
     @IBOutlet weak var myMemberTableView: UITableView!
+     @IBOutlet weak var infoLabel: UILabel!
+    @IBOutlet weak var topViewHeight: NSLayoutConstraint!
     
-    private var addedMember = [FriendList]()
-    private var addedMember2 = [FriendList]()
+    private var myMember = [FriendList]()
+    private var memberFriend = [FriendList]()
+   
     
     private var spinner: UIActivityIndicatorView!
     
@@ -22,6 +25,7 @@ class MyMembersVC: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        topViewHeight.editTopViewHeight()
         myMemberTableView.delegate = self
         myMemberTableView.dataSource = self
         addSpinner()
@@ -30,42 +34,66 @@ class MyMembersVC: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
+        self.myMemberTableView.isHidden = true
         spinner.startAnimating()
+        checkUserPresence()
         
-        if Auth.auth().currentUser?.uid != nil {
-            myMemberTableView.isHidden = false
-        DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) { (returnedFriendListArray) in
-            if returnedFriendListArray.isEmpty == false {
-                for friends in returnedFriendListArray {
-                    
-                    DataService.instance.getFriendsList(userID: friends.addedFriendUID, completion: { (returnedFriendList) in
-                        let friend1 = FriendList(addedFriendUID: returnedFriendList[0].addedFriendUID, status: returnedFriendList[0].status, key: returnedFriendList[0].key, friendEmail: nil)
-                        self.addedMember2.append(friend1)
-                        
-                        DataService.instance.getEmail(forUID: friends.addedFriendUID, completion: { (returnedEmail) in
-                            let myFriend = FriendList(addedFriendUID: friends.addedFriendUID, status: friends.status, key: friends.key, friendEmail: returnedEmail)
-                            self.addedMember.append(myFriend)
-                            self.spinner.removeFromSuperview()
-                            self.myMemberTableView.reloadData()
-                        })
-                        
-                    })
-
-                    }
-            }
-        }
-            
-        } else {
-            myMemberTableView.isHidden = true
-            spinner.removeFromSuperview()
-            //Show them that there is no friends to display.
-        }
     }
     
     //VIEW WILL DISAPPEAR:
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         self.spinner.removeFromSuperview()
+    }
+    
+    // CHECK IF USER IS LOGIN OR NOT:
+    private func checkUserPresence() {
+        
+        if Auth.auth().currentUser?.uid != nil {
+            
+            //Returns the friend list of current user.
+            DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) { (returnedFriendListArray) in
+                if returnedFriendListArray.isEmpty == false {
+                    for friends in returnedFriendListArray {
+                        
+                        //Returns the friend list of user friend.
+                        DataService.instance.getFriendsList(userID: friends.addedFriendUID, completion: { (returnedFriendList) in
+                            let userFriend = FriendList(addedFriendUID: returnedFriendList[0].addedFriendUID, status: returnedFriendList[0].status, key: returnedFriendList[0].key, friendEmail: nil, profileImage: nil)
+                            self.memberFriend.append(userFriend)
+                            
+                            DataService.instance.getUser(withUID: friends.addedFriendUID, completion: { (returnedUser) in
+                                let myFriend = FriendList(addedFriendUID: friends.addedFriendUID, status: friends.status, key: friends.key, friendEmail: returnedUser.email, profileImage: returnedUser.profileImageURL)
+                                self.myMember.append(myFriend)
+                                self.myMemberTableView.isHidden = false
+                                self.spinner.removeFromSuperview()
+                                self.myMemberTableView.reloadData()
+                                
+                            })
+                            
+                        })
+                        
+                    }
+                } else {
+                    self.spinner.removeFromSuperview()
+                    self.infoLabel.text = "You don't have any members."
+                    self.infoLabel.isHidden = false
+                    self.myMemberTableView.isHidden = true
+
+            }
+                
+            }
+            
+        } else {
+            spinner.removeFromSuperview()
+            self.infoLabel.text = "You have to login first."
+            self.infoLabel.isHidden = false
+            self.myMemberTableView.isHidden = true
+            
+            //Show them that there is no friends to display.
+        }
+
+        
+        
     }
 
     @IBAction func backButtonPressed(_ sender: UIButton) {
@@ -81,6 +109,21 @@ class MyMembersVC: UIViewController {
         self.view.addSubview(spinner)
     }
     
+    //DOWNLOADS AND RETURNS THE PROFILE IMAGE:
+    func returnProfileImage(ofIndexPath indexPath: IndexPath, completion: @escaping (_ image: UIImage) -> ()) {
+        if let userProfileImageURLString = myMember[indexPath.row].profileImage {
+            
+            guard let url = URL(string: userProfileImageURLString) else {return}
+            ImageDownloadService.instance.downloadImages(withUrl: url, completion: { (imageData) in
+                guard let profileImage = UIImage(data: imageData) else {return}
+                completion(profileImage)
+            })
+        } else {
+            let profileImage = UIImage(named: "userImage")
+            completion(profileImage!)
+        }
+    }
+    
     
     
 }
@@ -89,35 +132,70 @@ class MyMembersVC: UIViewController {
 extension MyMembersVC: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return addedMember.count
+        return myMember.count
         
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "myMembersCell", for: indexPath) as? MyMembersCell else {return UITableViewCell()}
+        let myFriend = myMember[indexPath.row]
         
-        if addedMember.isEmpty == false {
-            if addedMember[indexPath.row].status == 0 {
-                cell.configureCell(profilePicture: UIImage(named: "sakar")!, buttonTitle: "Pending", friendList: addedMember[indexPath.row], addedFriend: addedMember2[indexPath.row])
-                cell.acceptButton.isEnabled = false
-                
-            } else if addedMember[indexPath.row].status == 1 {
-                cell.configureCell(profilePicture: UIImage(named: "sakar")!, buttonTitle: "Accept", friendList: addedMember[indexPath.row], addedFriend: addedMember2[indexPath.row])
-                cell.acceptButton.isEnabled = true
-                
-            } else if addedMember[indexPath.row].status == 2 {
-                cell.configureCell(profilePicture: UIImage(named: "sakar")!, buttonTitle: "", friendList: addedMember[indexPath.row], addedFriend: addedMember2[indexPath.row])
-                cell.acceptButton.isHidden = true
-                
-            }
-            cell.delegate = self
+        cell.emailLabel.text = myFriend.email
+        cell.friend = myFriend
+        cell.addedFriend = memberFriend[indexPath.row]
+        
+        //downloads profile picture of memeber
+        if let friendProfileImageUrlString = myFriend.profileImage {
+            cell.profilePicture.loadImageUsingCache(withUrlString: friendProfileImageUrlString)
         }
+        
+        switch myFriend.status {
+        case 0:
+            cell.acceptButton.setTitle("Pending", for: .normal)
+            cell.acceptButton.isEnabled = false
+            cell.acceptButton.isHidden = false
+        case 1:
+            cell.acceptButton.setTitle("Accept", for: .normal)
+            cell.acceptButton.isEnabled = true
+            cell.acceptButton.isHidden = false
+        case 2:
+            cell.acceptButton.setTitle(nil, for: .normal)
+            cell.acceptButton.isHidden = true
+        default:
+            break
+        }
+        
+        cell.delegate = self
+        
+        return cell
+        
+        /*        if self.myMember[indexPath.row].status == 0 {
+                    returnProfileImage(ofIndexPath: indexPath, completion: { (userProfileImage) in
+                        cell.configureCell(profilePicture: userProfileImage, buttonTitle: "Pending", friendList: self.myMember[indexPath.row], addedFriend: self.memberFriend[indexPath.row])
+                        cell.acceptButton.isEnabled = false
+                    })
+                    
+                } else if self.myMember[indexPath.row].status == 1 {
+                    returnProfileImage(ofIndexPath: indexPath, completion: { (userProfileImage) in
+                        cell.configureCell(profilePicture: userProfileImage, buttonTitle: "Accept", friendList: self.myMember[indexPath.row], addedFriend: self.memberFriend[indexPath.row])
+                        cell.acceptButton.isEnabled = true
+                    })
+                    
+                } else if self.myMember[indexPath.row].status == 2 {
+                    returnProfileImage(ofIndexPath: indexPath, completion: { (returnedProfileImage) in
+                        cell.configureCell(profilePicture: returnedProfileImage, buttonTitle: "", friendList: self.myMember[indexPath.row], addedFriend: self.memberFriend[indexPath.row])
+                        cell.acceptButton.isHidden = true
+                    })
+                    
+                }
+        
+            cell.delegate = self
         
         
         return cell
+     */
     }
-    
 }
 
 extension MyMembersVC: MemberCellDelegate {
@@ -130,10 +208,10 @@ extension MyMembersVC: MemberCellDelegate {
                 DataService.instance.getFriendsList(userID: friend.addedFriendUID, completion: { (friendListArray) in
                     for friends in friendListArray {
                         DataService.instance.getEmail(forUID: friends.addedFriendUID, completion: { (returnedEmail) in
-                            let myFriend = FriendList(addedFriendUID: friends.addedFriendUID, status: friends.status, key: friends.key, friendEmail: returnedEmail)
-                            self.addedMember = []
-                            self.addedMember2 = []
-                            self.addedMember.append(myFriend)
+                            let myFriend = FriendList(addedFriendUID: friends.addedFriendUID, status: friends.status, key: friends.key, friendEmail: returnedEmail, profileImage: nil)
+                            self.myMember = []
+                            self.memberFriend = []
+                            self.myMember.append(myFriend)
                             self.myMemberTableView.reloadData()
                         })
                     }
@@ -147,7 +225,7 @@ extension MyMembersVC: MemberCellDelegate {
     //MORE BUTTON TAPPED:
      func didTappedMore(friend: FriendList, friend2: FriendList) {
         
-        let alertVC = UIAlertController(title: nil, message: "Do you wanna remove \(addedMember[0].email ?? "user") from your member List?", preferredStyle: .actionSheet)
+        let alertVC = UIAlertController(title: nil, message: "Do you wanna remove \(myMember[0].email ?? "user") from your member List?", preferredStyle: .actionSheet)
         
         let removeAction = UIAlertAction(title: "REMOVE", style: .destructive) { (removed) in
             
@@ -160,13 +238,13 @@ extension MyMembersVC: MemberCellDelegate {
                                 if friendListArray.isEmpty == false {
                                     for friend in friendListArray {
                                         DataService.instance.getEmail(forUID: friend.addedFriendUID, completion: { (returnedEmail) in
-                                            let myFriend = FriendList(addedFriendUID: friend.addedFriendUID, status: friend.status, key: friend.key, friendEmail: returnedEmail)
-                                            self.addedMember.append(myFriend)
+                                            let myFriend = FriendList(addedFriendUID: friend.addedFriendUID, status: friend.status, key: friend.key, friendEmail: returnedEmail, profileImage: nil)
+                                            self.myMember.append(myFriend)
                                             self.myMemberTableView.reloadData()
                                         })
                                     }
                                 } else {
-                                    self.addedMember = []
+                                    self.myMember = []
                                     self.myMemberTableView.reloadData()
                                 }
                                 

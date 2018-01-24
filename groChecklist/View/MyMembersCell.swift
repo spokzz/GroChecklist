@@ -25,7 +25,7 @@ class MyMembersCell: UITableViewCell {
     var friend: FriendList?
     var addedFriend: FriendList?
     
-    func configureCell(profilePicture: UIImage, buttonTitle: String, friendList: FriendList?, addedFriend: FriendList?) {
+  /*  func configureCell(profilePicture: UIImage, buttonTitle: String, friendList: FriendList?, addedFriend: FriendList?) {
         
         self.profilePicture.image = profilePicture
         self.emailLabel.text = friendList?.email
@@ -33,6 +33,7 @@ class MyMembersCell: UITableViewCell {
         self.friend = friendList
         self.addedFriend = addedFriend
     }
+ */
     
     @IBAction func acceptButtonPressed(_ sender: UIButton) {
         if let friend = friend, let friend2 = addedFriend {

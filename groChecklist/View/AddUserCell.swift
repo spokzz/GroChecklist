@@ -19,15 +19,7 @@ class AddUserCell: UITableViewCell {
     @IBOutlet weak var addButton: UIButton!
     
     var delegate: AddUserDelegate?
-    private var email: String!
-    
-    func configureCell(profileImage: String, userEmail: String) {
-        
-        self.profileImage.image = UIImage(named: profileImage)
-        self.userEmail.text = userEmail
-        self.email = userEmail
-        
-    }
+    var email: String!
     
     @IBAction func addButtonTapped(_ sender: UIButton) {
         

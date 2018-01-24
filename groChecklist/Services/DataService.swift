@@ -8,6 +8,8 @@
 
 import Foundation
 import Firebase
+import AlamofireImage
+
 
 let DB_BASE = Database.database().reference()
 //0 - pending, 1 - Accept, 2 - friends. (Status in Database)
@@ -44,24 +46,74 @@ class DataService {
         REF_USERS.child(uid).updateChildValues(userData)
     }
     
+    //ADD IMAGES IN "USER" DATABASE:
+    func addImageInUserDB(withprofileImageURL url: String) {
+        REF_USERS.child((Auth.auth().currentUser?.uid)!).updateChildValues(["profileImage": url])
+    }
+    
     //RETURN EMAIL WITH SEARCH LETTER:
-    func getEmail(forSearchQuery query: String, completion: @escaping (_ emailArray: [String]) -> ()) {
-        var emailArray = [String]()
+    func getEmailAndUserImage(forSearchQuery query: String, completion: @escaping (_ userArray: [Users]) -> ()) {
+        var userArray = [Users]()
         
         REF_USERS.observe(.value) { (userSnapshot) in
             guard let userSnapshot = userSnapshot.children.allObjects as? [DataSnapshot] else {return}
             
             for user in userSnapshot {
+                
                 let email = user.childSnapshot(forPath: "email").value as! String
+                let profileImage = user.childSnapshot(forPath: "profileImage").value as? String ?? nil
                 
                 if email.contains(query) == true && email != Auth.auth().currentUser?.email {
-                    emailArray.append(email)
+                    let user = Users(email: email, profileImageURL: profileImage)
+                    userArray.append(user)
+                    
                 }
             }
-            completion(emailArray)
+            completion(userArray)
 
         }
     }
+    
+    //RETURNS USERS WITH IMAGE DATA (FOR SEARCHING USERS)
+  /*  func getUserEmailAndImageData(forSearchQuery query: String, completion: @escaping (_ userArray: [UserWithImageData]) -> ()) {
+        var usersArray = [UserWithImageData]()
+        
+        REF_USERS.observe(.value) { (userSnapshot) in
+            guard let userSnapshot = userSnapshot.children.allObjects as? [DataSnapshot] else {return}
+            
+            for user in userSnapshot {
+                
+                let email = user.childSnapshot(forPath: "email").value as! String
+                let profileImageString = user.childSnapshot(forPath: "profileImage").value as? String ?? nil
+                
+                if email.contains(query) == true && email != Auth.auth().currentUser?.email {
+                    
+                    if profileImageString != nil {
+                        
+                        guard let imageURL = URL(string: profileImageString!) else {return}
+                        
+                        DispatchQueue.main.async {
+                            ImageDownloadService.instance.downloadImages(withUrl: imageURL, completion: { (returnedImageData) in
+                                let userWithImage = UserWithImageData(email: email, imageData: returnedImageData)
+                                usersArray.append(userWithImage)
+                                print(userWithImage.email)
+                            })
+                        }
+                        
+                    } else {
+                        let userWithoutImage = UserWithImageData(email: email, imageData: nil)
+                        usersArray.append(userWithoutImage)
+                    }
+                }
+            }
+            print(usersArray.count)
+            completion(usersArray)
+            
+        }
+        
+     }
+  */
+    
     
     //SIGN OUT FROM FIREBASE:
     func signOut(completion: (_ status: Bool, _ error: Error?) -> ()) {
@@ -105,22 +157,26 @@ class DataService {
             
             guard let email = dataSnapshot.childSnapshot(forPath: "email").value as? String else {return}
                completion(email)
-        
-            
-//
-//
-//            guard let dataSnapshot = dataSnapshot.children.allObjects as? [DataSnapshot] else {return}
-//
-//            for data in dataSnapshot {
-//
-//                let email = data.childSnapshot(forPath: "email").value as! String
-//                userEmail = email
-//            }
             
             
         }
+    }
+    
+    //RETURNS USER FROM UID:
+    func getUser(withUID uid: String, completion: @escaping (_ users: Users) -> ()) {
         
-        
+        REF_USERS.child(uid).observeSingleEvent(of: .value) { (userSnapshot) in
+            
+            guard let email = userSnapshot.childSnapshot(forPath: "email").value as? String else {return}
+            if let profileImage = userSnapshot.childSnapshot(forPath: "profileImage").value as? String {
+                
+                let user = Users(email: email, profileImageURL: profileImage)
+                completion(user)
+            } else {
+                let user = Users(email: email, profileImageURL: nil)
+                completion(user)
+            }
+        }
     }
     
     //UPLOAD ITEMS IN GROUP:
@@ -197,7 +253,7 @@ class DataService {
                     let addedFriend = friendList.childSnapshot(forPath: "AddedFriend").value as! String
                     let status = friendList.childSnapshot(forPath: "status").value as! Int
                     
-                let friendListArray = FriendList(addedFriendUID: addedFriend, status: status, key: friendList.key, friendEmail: nil)
+                let friendListArray = FriendList(addedFriendUID: addedFriend, status: status, key: friendList.key, friendEmail: nil, profileImage: nil)
                 friendsArray.append(friendListArray)
                 
             }

@@ -8,6 +8,8 @@
 
 import UIKit
 import Firebase
+import Alamofire
+import AlamofireImage
 
 class MoreVC: UIViewController {
 
@@ -16,25 +18,61 @@ class MoreVC: UIViewController {
     @IBOutlet weak var profileImageView: customUIImageView!
     @IBOutlet weak var userEmailLabel: UILabel!
     @IBOutlet weak var logInButton: UIButton!
+    @IBOutlet weak var topGradientViewHeight: NSLayoutConstraint!
     
     private var settingsTitle: [String] = ["My Members","Add Members","Edit Photo", "Watch Tutorial"]
+    private let userImageKey = "userImage"
     
+     let application = UIApplication.shared
+    
+    //VIEW DID LOAD:
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        topGradientViewHeight.editMoreVCColorGradientHeight()
         moreTableView.delegate = self
         moreTableView.dataSource = self
+        
     }
 
+    //VIEW WILL APPEAR:
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
+        checkUserPresence()
+        if let totalAmount = coreDataTotalAmount {
+            monthTotalAmountLabel.text = "$\(totalAmount)"
+        }
+        application.statusBarStyle = .lightContent
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        application.statusBarStyle = .default
+    }
+    
+    //IF USER IS THERE:
+    func checkUserPresence() {
+        
         if Auth.auth().currentUser?.uid == nil {
             logInButton.isHidden = false
+            profileImageView.image = UIImage(named: "userImage")
+            
         } else {
+            
+                DataService.instance.getUser(withUID: (Auth.auth().currentUser?.uid)!, completion: { (returnedUsers) in
+                    if returnedUsers.profileImageURL != nil {
+                            self.profileImageView.loadImageUsingCache(withUrlString: returnedUsers.profileImageURL!)
+                        
+                    } else {
+                        self.profileImageView.image = UIImage(named: "userImage")
+                    }
+                })
+            
             logInButton.isHidden = true
         }
         userEmailLabel.text = Auth.auth().currentUser?.email ?? "user@grochecklist.com"
+        
     }
     
     
@@ -48,6 +86,7 @@ class MoreVC: UIViewController {
             if successful {
                 print("Sign Out successful")
                 userEmailLabel.text = "user@grochecklist.com"
+                profileImageView.image = UIImage(named: "userImage")
                 logInButton.isHidden = false
             } else {
                 print("Error in signout: \(String(describing: error?.localizedDescription))")
@@ -59,21 +98,37 @@ class MoreVC: UIViewController {
     private func addAction(forIndexPath index: IndexPath) {
         
         switch index.row {
+            
+            //My Members
         case 0:
             guard let myMembersVC = storyboard?.instantiateViewController(withIdentifier: "myMembersVC") else {return}
             present(myMembersVC, animated: true, completion: nil)
             
+            //Add Members
         case 1:
             guard let searchUserVC = storyboard?.instantiateViewController(withIdentifier: "addUsersVC") else {return}
            present(searchUserVC, animated: true, completion: nil)
     
+            //Edit Photo
         case 2:
-            let imagePicker = UIImagePickerController()
-            imagePicker.allowsEditing = true
-            imagePicker.sourceType = .photoLibrary
-            imagePicker.delegate = self
             
-            present(imagePicker, animated: true, completion: nil)
+            if Auth.auth().currentUser?.uid != nil {
+                let imagePicker = UIImagePickerController()
+                imagePicker.allowsEditing = true
+                imagePicker.sourceType = .photoLibrary
+                imagePicker.delegate = self
+                
+                present(imagePicker, animated: true, completion: nil)
+            } else {
+                
+                let alertVC = UIAlertController(title: nil, message: "You must login to change your profile picture.", preferredStyle: .alert)
+                let action = UIAlertAction(title: "OK", style: .default, handler: nil)
+                alertVC.addAction(action)
+                present(alertVC, animated: true, completion: nil)
+                
+            }
+            
+            //Watch Tutorial
         case 3:
             //... Show Tutorial of Apps.
             print("3")
@@ -114,19 +169,20 @@ extension MoreVC: UITableViewDelegate, UITableViewDataSource {
     
 }
 
+//UIImagePickerDelegate:
 extension MoreVC: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
+        
         if let pickedImage = info[UIImagePickerControllerEditedImage] as? UIImage, let imageData = UIImagePNGRepresentation(pickedImage) {
             
-        let profileImageData = imageData
-         profileImageView.image = pickedImage
+            self.profileImageView.image = pickedImage
             
             //BACKGROUND THREAD:
             DispatchQueue.global(qos: .userInteractive).async {
                 
-                StorageService.instance.uploadImageToFirebaseStorage(imageData: profileImageData, completion: { (metaData, error) in
+                StorageService.instance.uploadImageToFirebaseStorage(imageData: imageData, completion: { (metaData, error) in
                     if error != nil {
                         print("Image Upload Error: \(String(describing: error?.localizedDescription))")
                     } else {
@@ -134,41 +190,27 @@ extension MoreVC: UIImagePickerControllerDelegate, UINavigationControllerDelegat
                             if error != nil {
                                 print("Download Error: \(error?.localizedDescription)")
                             } else {
-                                print("URL: \(url)")
+                                if let profileImageURl = url?.absoluteString {
+                                  DataService.instance.addImageInUserDB(withprofileImageURL: profileImageURl)
+                                }
                             }
                         })
+                        
                     }
                 })
-                
         }
-            
     }
        dismiss(animated: true, completion: nil)
+    }
+    
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        dismiss(animated: true, completion: nil)
     }
 
     
 }
 
-/*
- DispatchQueue.global(qos: .userInteractive).async {
- 
- StorageService.instance.deleteImageFromStorage(ofUID: (Auth.auth().currentUser?.uid)!, completion: { (success, error) in
- if success {
- StorageService.instance.uploadImageToFirebaseStorage(imageData: self.profileImageData!, completion: { (uploaded, error) in
- if uploaded {
- print("Successfully uploaded.")
- } else {
- print("Image upload error: \(error?.localizedDescription)")
- }
- })
- 
- } else {
- print("Error in deletion: \(error?.localizedDescription)")
- }
- })
- 
- }
-*/
+
 
 
 

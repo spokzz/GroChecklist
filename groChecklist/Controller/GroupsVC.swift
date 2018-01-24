@@ -13,6 +13,7 @@ class GroupsVC: UIViewController {
 
     @IBOutlet weak var groupTableView: UITableView!
     @IBOutlet weak var informationStackView: UIStackView!
+    @IBOutlet weak var topViewHeight: NSLayoutConstraint!
     
     private var groupsArray = [Groups]()
     private var spinner: UIActivityIndicatorView!
@@ -20,6 +21,7 @@ class GroupsVC: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        topViewHeight.editTopViewHeight()
         groupTableView.delegate = self
         groupTableView.dataSource = self
         addSpinner()
@@ -29,22 +31,34 @@ class GroupsVC: UIViewController {
         super.viewWillAppear(animated)
         
         spinner.startAnimating()
+        checkUserPresence()
+        
+    }
+    
+    //VIEW WILL DISAPPEAR:
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        self.spinner.removeFromSuperview()
+    }
+    
+    //CHECKS IF USER IS NIL OR NOT:
+    private func checkUserPresence() {
         
         if Auth.auth().currentUser?.uid != nil {
             groupTableView.isHidden = false
             informationStackView.isHidden = true
             DataService.instance.getAllGroups { (allGroups) in
-                self.groupsArray = allGroups
                 
                 if allGroups.isEmpty {
                     self.groupTableView.isHidden = true
                     self.informationStackView.isHidden = false
-                   
+                    
                 } else {
+                    self.groupsArray = allGroups
                     self.groupTableView.isHidden = false
                     self.informationStackView.isHidden = true
                     self.groupTableView.reloadData()
-                   
+                    
                 }
                 self.spinner.removeFromSuperview()
             }
@@ -53,13 +67,9 @@ class GroupsVC: UIViewController {
             informationStackView.isHidden = false
             self.spinner.removeFromSuperview()
         }
+
         
-    }
-    
-    //VIEW WILL DISAPPEAR:
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        self.spinner.removeFromSuperview()
+        
     }
 
     //ADD GROUP BUTTON PRESSED:
@@ -108,21 +118,47 @@ class GroupsVC: UIViewController {
 //TABLE VIEW:
 extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
     
+    //NUMBER OF ROWS:
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return groupsArray.count
     }
     
+    //CELL FOR ROW:
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
        guard let cell = tableView.dequeueReusableCell(withIdentifier: "groupsCell", for: indexPath) as? GroupsCell else {return UITableViewCell()}
-        let groupToShow = groupsArray[indexPath.row]
-        cell.configureCell(date: groupToShow.groupCreatedDate, totalPrice: groupToShow.totalAmount, userImage1: "ishwor", userImage2: "sakar", userImage3: "alien")
-        return cell
         
+        let groupToShow = groupsArray[indexPath.row]
+        cell.dateLabel.text = groupToShow.groupCreatedDate
+        cell.totalLabel.text = "Total Amount:\(groupToShow.totalAmount)"
+        
+        //Returns the friend images in cell
+        for membersUID in groupToShow.members {
+            if membersUID != Auth.auth().currentUser?.uid {
+                
+                DataService.instance.getUser(withUID: membersUID, completion: { (returnedUser) in
+                    if let userImageURL = returnedUser.profileImageURL {
+                        cell.friendImage.loadImageUsingCache(withUrlString: userImageURL)
+                    } else {
+                        cell.friendImage.image = UIImage(named: "userImage")
+                    }
+                })
+            }
+            
+        }
+        
+        return cell
     }
     
+    //DID SELECT ROW:
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
+        addAlertController(indexPath: indexPath, tableView: tableView)
+    }
+    
+    
+    //ADD ALERT CONTROLLER ON SELECTED ROW:
+    func addAlertController(indexPath: IndexPath, tableView: UITableView) {
+     
         let alertVC = UIAlertController(title: nil, message: groupsArray[indexPath.row].groupCreatedDate, preferredStyle: .actionSheet)
         
         //View Items of selected Group
@@ -143,7 +179,8 @@ extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
                 let textField = alert.textFields![0] as UITextField
                 if textField.text != "" {
                     if let totalPriceInDouble = Double(textField.text!) {
-                        DataService.instance.editTotalPrice(ofGroup: self.groupsArray[indexPath.row], newTotalPrice: "\(totalPriceInDouble)", completion: { (completed) in
+                        let priceRoundUp = totalPriceInDouble.round(to: 2)
+                        DataService.instance.editTotalPrice(ofGroup: self.groupsArray[indexPath.row], newTotalPrice: "\(priceRoundUp)", completion: { (completed) in
                             if completed {
                                 DataService.instance.getAllGroups { (allGroups) in
                                     self.groupsArray = allGroups
