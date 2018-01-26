@@ -24,6 +24,7 @@ extension NSLayoutConstraint {
             }
         }
     
+    //CHANGE THE COLOR GRADIENT HEIGHT OF MOREVC
     func editMoreVCColorGradientHeight() {
         
         switch deviceType! {
@@ -39,4 +40,47 @@ extension NSLayoutConstraint {
         
     }
     
+    //CHANGE THE COLOR GRADIENT HEIGHT OF LOGIN VC
+    func editLoginVCColorGradientHeight() {
+        
+        switch deviceType! {
+        case "iphone 8", "iphone 8 Plus":
+            self.constant = 250
+        case "iphone X":
+            self.constant = 270
+        default:
+            self.constant = 250
+            return
+        }
+    }
+    
+    func changeEmailLoginColorGradientHeight() {
+        
+        switch deviceType! {
+        case "iphone 8", "iphone 8 Plus":
+            self.constant = 230
+        case "iphone X":
+            self.constant = 250
+        default:
+            self.constant = 230
+            return
+        }
+        
+        
+        
+    }
+    
+    
 }
+
+
+
+
+
+
+
+
+
+
+
+

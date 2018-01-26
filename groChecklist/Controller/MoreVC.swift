@@ -23,7 +23,7 @@ class MoreVC: UIViewController {
     private var settingsTitle: [String] = ["My Members","Add Members","Edit Photo", "Watch Tutorial"]
     private let userImageKey = "userImage"
     
-     let application = UIApplication.shared
+    let application = UIApplication.shared
     
     //VIEW DID LOAD:
     override func viewDidLoad() {
@@ -39,11 +39,12 @@ class MoreVC: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
+        application.statusBarStyle = .lightContent
         checkUserPresence()
         if let totalAmount = coreDataTotalAmount {
             monthTotalAmountLabel.text = "$\(totalAmount)"
         }
-        application.statusBarStyle = .lightContent
+        
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -176,8 +177,6 @@ extension MoreVC: UIImagePickerControllerDelegate, UINavigationControllerDelegat
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
         
         if let pickedImage = info[UIImagePickerControllerEditedImage] as? UIImage, let imageData = UIImagePNGRepresentation(pickedImage) {
-            
-            self.profileImageView.image = pickedImage
             
             //BACKGROUND THREAD:
             DispatchQueue.global(qos: .userInteractive).async {

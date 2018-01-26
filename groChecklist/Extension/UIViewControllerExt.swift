@@ -16,7 +16,7 @@ extension UIViewController {
         let tranisition = CATransition()
         tranisition.type = kCATransitionMoveIn
         tranisition.subtype = kCATransitionFromRight
-        tranisition.duration = 0.3
+        tranisition.duration = 0.5
         
         self.view.window?.layer.add(tranisition, forKey: kCATransition)
         self.present(viewController, animated: false, completion: nil)
@@ -28,7 +28,7 @@ extension UIViewController {
         let transition = CATransition()
         transition.type = kCATransitionMoveIn
         transition.subtype = kCATransitionFromLeft
-        transition.duration = 0.3
+        transition.duration = 0.5
         
         self.view.window?.layer.add(transition, forKey: kCATransition)
         self.dismiss(animated: false, completion: nil)
