@@ -37,23 +37,7 @@ class StorageService {
         }
     }
     
-    //DOWNLOAD IMAGES INTO MEMORY:
-   /* func downloadImagesFromStorage(ofUID id : String, completion: @escaping (_ imageData: Data?, _ error: Error?) -> ()) {
-        
-        let imageReference = REF_PROFILEIMAGE.child(id)
-        
-        //download 1MB images.
-        imageReference.getData(maxSize: 1 * 1025 * 1024) { (data , downloadError) in
-            if downloadError != nil {
-                completion(nil, downloadError)
-            } else {
-                completion(data, nil)
-            }
-        }
-        
-    }
- */
-    
+    //DOWNLOAD IMAGES FROM FIREBASE STORAGE:
     func downloadImagesFromStorage(ofUID id: String, completion: @escaping (_ url: URL?, _ error: Error?) -> () ) {
         
         let imageReference = REF_PROFILEIMAGE.child(id)
@@ -69,7 +53,7 @@ class StorageService {
         
     }
     
-    //DELETE IMAGES:
+    //DELETE IMAGES FROM FIREBASE STORAGE:
     func deleteImageFromStorage(ofUID id: String, completion: @escaping (_ sender: Bool, _ error: Error?) -> ()) {
         
         let imageReference = REF_PROFILEIMAGE.child(id)

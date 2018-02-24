@@ -16,17 +16,19 @@ class ViewGroupItems: UIViewController {
     private var group: Groups!
     private var groceryItemsArray = [GroceryItem]()
     
+    //VIEW DID LOAD:
     override func viewDidLoad() {
         super.viewDidLoad()
         groupItemsTableView.delegate = self
         groupItemsTableView.dataSource = self
     }
     
+    //VIEW WILL APPEAR:
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         self.dateTopLabel.text = group.groupCreatedDate
         
-        DataService.instance.REF_GROUPS.observe(.value) { (snapshot) in
+        DataService.instance.REF_GROUPS.observe(.value) {(snapshot) in
             DataService.instance.getAllItems(forGroup: self.group, completion: { (returnedGroceryItemsArray) in
                 self.groceryItemsArray = returnedGroceryItemsArray
                 self.groupItemsTableView.reloadData()
@@ -35,11 +37,13 @@ class ViewGroupItems: UIViewController {
         
     }
     
+    //TAKES DATA FROM OTHER VC
     func initData(groupPressed: Groups) {
         self.group = groupPressed
         
     }
 
+    //CLOSE BUTTON PRESSED:
     @IBAction func closeButtonPressed(_ sender: UIButton) {
         dismiss(animated: true, completion: nil)
         

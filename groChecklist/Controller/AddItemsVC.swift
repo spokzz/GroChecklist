@@ -40,6 +40,11 @@ class AddItemsVC: UIViewController {
         addTapGesture()
         
     }
+    //VIEW WILL DISAPPEAR:
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        itemEntryTextField.endEditing(true)
+    }
     
     //VIEW WILL APPEAR:
     override func viewWillAppear(_ animated: Bool) {
@@ -57,16 +62,6 @@ class AddItemsVC: UIViewController {
         self.group = group
     }
     
-    //ADD TAP GESTURE (SINGLE TAP)
-    private func addTapGesture() {
-        let dismiss = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
-        self.view.addGestureRecognizer(dismiss)
-    }
-    
-    //USER TAPPED ON A SCREEN:
-    @objc func dismissKeyboard() {
-        self.view.endEditing(true)
-    }
     
     //UPLOAD BUTTON PRESSED:
     @IBAction func uploadButtonPressed(_ sender: UIButton) {
@@ -108,7 +103,7 @@ class AddItemsVC: UIViewController {
     @IBAction func saveButtonPressed(_ sender: UIButton) {
         if group != nil {
             
-            DataService.instance.uploadItemsInGroup(withItems: groceryItems, forGroupKey: (group?.key)!, uploadCompletion: { (uploaded) in
+            DataService.instance.uploadItemsInGroup(withItems: groceryItems, forGroupKey: (group?.key)!, uploadCompletion: {[unowned self] (uploaded) in
                 self.groceryItems = []
                 self.performSegue(withIdentifier: "unwindToGroups", sender: nil)
             })
@@ -167,23 +162,6 @@ extension AddItemsVC: UITableViewDelegate, UITableViewDataSource {
         return cell
     }
     
-    //Remove rows from tableView.
-  /* func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath) -> [UITableViewRowAction]? {
-        
-        let delete = UITableViewRowAction(style: .destructive, title: "DELETE") { (action, indexPath) in
-            
-            self.deleteData(indexPath: indexPath, completion: { (deleted) in
-                if deleted {
-                    self.fetchData()
-                    tableView.deleteRows(at: [indexPath], with: .fade)
-                    self.itemTableView.reloadData()
-                }
-            })
-        }
-        
-        return [delete]
-    } */
-    
 }
 
 //CORE DATA:
@@ -224,24 +202,7 @@ extension AddItemsVC {
         }
         
     }
-    
-    //Delete SelectedItems from Core Data.
-   /* func deleteData(indexPath: IndexPath, completion: @escaping (_ status: Bool) -> ()) {
         
-        guard let managedContext = appDelegate?.persistentContainer.viewContext else {return}
-        
-        let removedItem = itemsArray[itemsArray.count - (1 + indexPath.row)]
-        managedContext.delete(removedItem)
-        
-        do {
-            try managedContext.save()
-            completion(true)
-        } catch {
-            print("Error in deleting data from swiping in AddItemsVC table row")
-            completion(false)
-        }
-    } */
-    
     
     //Delete CreatedList Model.
     func deleteCreatedList(completion: @escaping (_ status: Bool) -> ()) {
@@ -263,6 +224,26 @@ extension AddItemsVC {
     
 }
 
+//CUSTOM FUNCTIONS
+extension AddItemsVC {
+    
+    //ADD TAP GESTURE (SINGLE TAP)
+    private func addTapGesture() {
+        let dismiss = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        self.view.addGestureRecognizer(dismiss)
+    }
+    
+    //USER TAPPED ON A SCREEN:
+    @objc private func dismissKeyboard() {
+        self.view.endEditing(true)
+    }
+    
+    
+    
+    
+    
+    
+}
 
 
 

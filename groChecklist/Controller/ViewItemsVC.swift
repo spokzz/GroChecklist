@@ -16,22 +16,26 @@ class ViewItemsVC: UIViewController {
     private var itemsArray: [Items]!
     private var createdDate: String!
     
+    //VIEW DID LOAD:
     override func viewDidLoad() {
         super.viewDidLoad()
         itemTableView.delegate = self
         itemTableView.dataSource = self
     }
     
+    //VIEW WILL APPEAR:
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         topViewLabel.text = createdDate
     }
     
+    //TAKES DATA FROM OTHER VIEW CONTROLLER:
     func initData(itemsArray: [Items], createdDate: String) {
         self.itemsArray = itemsArray
         self.createdDate = createdDate
     }
 
+    //CLOSE BUTTON PRESSED:
     @IBAction func closeButtonPressed(_ sender: UIButton) {
         
         dismiss(animated: true, completion: nil)
@@ -84,8 +88,7 @@ extension ViewItemsVC {
             items.checked = true
             showImage(true)
         }
-        
-        
+    
         do {
             try managedContext.save()
         } catch {

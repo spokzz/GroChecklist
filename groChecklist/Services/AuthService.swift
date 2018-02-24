@@ -25,6 +25,7 @@ class AuthService {
             DataService.instance.createDBUser(uid: user.uid, userData: userData as Any as! Dictionary<String, Any>)
             userCreationComplete(true, nil)
         }
+        
     }
     
     //Login User in Firebase:
@@ -37,8 +38,46 @@ class AuthService {
                 loginCompletion(false, error)
             }
         }
+        
     }
-
+    
+    //SIGN OUT FROM FIREBASE:
+    func signOut(completion: @escaping (_ status: Bool, _ error: Error?) -> ()) {
+        
+        do {
+            try Auth.auth().signOut()
+            completion(true, nil)
+        } catch {
+            completion(false,error)
+        }
+    }
+    
+    //RESET PASSWORD:
+    func resetPassword(forEmail email: String, completion: @escaping (_ status: Bool, _ error: Error?) -> ()) {
+        
+        Auth.auth().sendPasswordReset(withEmail: email) { (resetError) in
+            if resetError != nil {
+                completion(false, resetError)
+            } else {
+                completion(true, nil)
+            }
+        }
+        
+        
+    }
     
     
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

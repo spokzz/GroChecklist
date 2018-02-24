@@ -32,50 +32,13 @@ class SearchUserVC: UIViewController {
         searchTableView.dataSource = self
         dateFormatter.dateFormat = "MMM d, yyyy"
         
-
     }
     
     //VIEW WILL APPEAR
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         nextButton.isHidden = true
-        
-        DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) { (returnedFriendList) in
-            
-                if returnedFriendList.isEmpty || returnedFriendList[0].status != 2 {
-                
-                    self.searchTableView.isHidden = true
-                    self.informationStackView.isHidden = false
-                    
-                } else {
-                    DataService.instance.getUser(withUID: returnedFriendList[0].addedFriendUID, completion: { (returnedUser) in
-                   self.userArray.append(returnedUser)
-                    self.userIdsArray.append(returnedFriendList[0].addedFriendUID)
-                    self.searchTableView.isHidden = false
-                    self.informationStackView.isHidden = true
-                    self.searchTableView.reloadData()
-                        
-                    })
-                }
-            
-            
-            ////////
-          /*  DataService.instance.getEmail(forUID: returnedFriendList[0].addedFriendUID, completion: { (returnedEmail) in
-                if returnedFriendList.isEmpty && returnedFriendList[0].status != 2{
-                    self.searchTableView.isHidden = true
-                    self.informationStackView.isHidden = false
-                    
-                } else {
-                   self.emailArray.append(returnedEmail)
-                    self.userIdsArray.append(returnedFriendList[0].addedFriendUID)
-                    self.searchTableView.isHidden = false
-                    self.informationStackView.isHidden = true
-                    self.searchTableView.reloadData()
-                }
-                
-            })
-           */
-        }
+        getFriendList()
     }
     
     //VIEW WILL DISAPPEAR:
@@ -101,20 +64,9 @@ class SearchUserVC: UIViewController {
         let todayDateString = dateFormatter.string(from: todayDate)
         
             self.userIdsArray.append((Auth.auth().currentUser?.uid)!)
-            
-            DataService.instance.createGroup(withDate: todayDateString, andTotalAmount: "0.0", forUserIds: userIdsArray,  completion: { (groupCreated) in
-                if groupCreated {
-                    DataService.instance.getAllGroups(completion: { (groupsArray) in
-                        guard let addItemsVC = self.storyboard?.instantiateViewController(withIdentifier: "addItemsVC") as? AddItemsVC else {return}
-                        addItemsVC.initData(forGroup: groupsArray[0])
-                        self.presentVCFromRightSide(withViewController: addItemsVC)
-                        self.nextButton.isEnabled = true
-                    })
-                } else {
-                    self.nextButton.isEnabled = true
-                }
-        })
+            createGroup(withDate: todayDateString, totalAmount: "0.0", forUserIdsArray: userIdsArray)
         }
+    
     }
 
 
@@ -137,7 +89,6 @@ extension SearchUserVC: UITableViewDataSource, UITableViewDelegate {
             cell.userImageView.loadImageUsingCache(withUrlString: userProfileImageUrlString)
             
         }
-        
         if membersArray.contains(myMember.email) {
             cell.checkedImageView.isHidden = false
             
@@ -147,6 +98,7 @@ extension SearchUserVC: UITableViewDataSource, UITableViewDelegate {
         
         return cell
     }
+    
     
     //did Select Row:
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -164,7 +116,7 @@ extension SearchUserVC: UITableViewDataSource, UITableViewDelegate {
 }
 
 
-//SAVE EMAIL FROM SEARCH LIST.
+//CUSTOM FUNCTION
 extension SearchUserVC {
     
     //It will save email from search Text Field. (Tapped)
@@ -178,6 +130,48 @@ extension SearchUserVC {
             }
         }
     }
+    
+    //RETURNS FRIEND LIST FROM FIREBASE:
+    private func getFriendList() {
+        
+        DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) {(returnedFriendList) in
+            
+            if returnedFriendList.isEmpty || returnedFriendList[0].status != 2 {
+                
+                self.searchTableView.isHidden = true
+                self.informationStackView.isHidden = false
+                
+            } else {
+                DataService.instance.getUser(withUID: returnedFriendList[0].addedFriendUID, completion: { (returnedUser) in
+                    self.userArray.append(returnedUser)
+                    self.userIdsArray.append(returnedFriendList[0].addedFriendUID)
+                    self.searchTableView.isHidden = false
+                    self.informationStackView.isHidden = true
+                    self.searchTableView.reloadData()
+                    
+                })
+            }
+        }
+    }
+    
+    //CREATES NEW GROUP ON FIREBASE DATABASE:
+    private func createGroup(withDate date: String, totalAmount: String, forUserIdsArray userIds: [String]) {
+        
+        DataService.instance.createGroup(withDate: date, andTotalAmount: totalAmount, forUserIds: userIds,  completion: {(groupCreated) in
+            if groupCreated {
+                DataService.instance.getAllGroups(completion: { (groupsArray) in
+                    guard let addItemsVC = self.storyboard?.instantiateViewController(withIdentifier: "addItemsVC") as? AddItemsVC else {return}
+                    addItemsVC.initData(forGroup: groupsArray[0])
+                    self.presentVCFromRightSide(withViewController: addItemsVC)
+                    self.nextButton.isEnabled = true
+                })
+            } else {
+                self.nextButton.isEnabled = true
+            }
+        })
+        
+    }
+
     
     
 }

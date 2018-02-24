@@ -13,5 +13,6 @@ target 'groChecklist' do
   pod 'Firebase/Database'
   pod 'Firebase/Storage'
   pod 'AlamofireImage'
+  pod 'GoogleSignIn'
 
 end

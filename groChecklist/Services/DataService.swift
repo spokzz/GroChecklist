@@ -46,6 +46,13 @@ class DataService {
         REF_USERS.child(uid).updateChildValues(userData)
     }
     
+    //CREATE GROUP:
+    func createGroup(withDate date: String, andTotalAmount total: String, forUserIds uids: [String], completion: @escaping (_ groupsCreated: Bool) -> ()) {
+        
+        REF_GROUPS.childByAutoId().updateChildValues(["CreatedDate": date, "TotalAmount": total, "members": uids])
+        completion(true)
+    }
+    
     //ADD IMAGES IN "USER" DATABASE:
     func addImageInUserDB(withprofileImageURL url: String) {
         REF_USERS.child((Auth.auth().currentUser?.uid)!).updateChildValues(["profileImage": url])
@@ -74,64 +81,6 @@ class DataService {
         }
     }
     
-    //RETURNS USERS WITH IMAGE DATA (FOR SEARCHING USERS)
-  /*  func getUserEmailAndImageData(forSearchQuery query: String, completion: @escaping (_ userArray: [UserWithImageData]) -> ()) {
-        var usersArray = [UserWithImageData]()
-        
-        REF_USERS.observe(.value) { (userSnapshot) in
-            guard let userSnapshot = userSnapshot.children.allObjects as? [DataSnapshot] else {return}
-            
-            for user in userSnapshot {
-                
-                let email = user.childSnapshot(forPath: "email").value as! String
-                let profileImageString = user.childSnapshot(forPath: "profileImage").value as? String ?? nil
-                
-                if email.contains(query) == true && email != Auth.auth().currentUser?.email {
-                    
-                    if profileImageString != nil {
-                        
-                        guard let imageURL = URL(string: profileImageString!) else {return}
-                        
-                        DispatchQueue.main.async {
-                            ImageDownloadService.instance.downloadImages(withUrl: imageURL, completion: { (returnedImageData) in
-                                let userWithImage = UserWithImageData(email: email, imageData: returnedImageData)
-                                usersArray.append(userWithImage)
-                                print(userWithImage.email)
-                            })
-                        }
-                        
-                    } else {
-                        let userWithoutImage = UserWithImageData(email: email, imageData: nil)
-                        usersArray.append(userWithoutImage)
-                    }
-                }
-            }
-            print(usersArray.count)
-            completion(usersArray)
-            
-        }
-        
-     }
-  */
-    
-    
-    //SIGN OUT FROM FIREBASE:
-    func signOut(completion: (_ status: Bool, _ error: Error?) -> ()) {
-        
-        do {
-            try Auth.auth().signOut()
-            completion(true, nil)
-        } catch {
-            completion(false,error)
-        }
-    }
-    
-    //CREATE GROUP:
-    func createGroup(withDate date: String, andTotalAmount total: String, forUserIds uids: [String], completion: @escaping (_ groupsCreated: Bool) -> ()) {
-        
-        REF_GROUPS.childByAutoId().updateChildValues(["CreatedDate": date, "TotalAmount": total, "members": uids])
-        completion(true)
-    }
     
     //RETURNS UIDS FROM EMAIL:
     func getUserdIds(forEmail emailArray:[String], completion: @escaping (_ uidArray: [String]) -> ()) {
@@ -275,6 +224,14 @@ class DataService {
         completion(true)
     }
     
+    //EDIT TITLE OF GROUP:
+    func editTitle(ofGroup group: Groups, newTitle title: String, completion: @escaping (_ status: Bool) -> ()){
+        
+        REF_GROUPS.child(group.key).child("CreatedDate").setValue(title)
+        completion(true)
+        
+    }
+    
     //DELETES SELECTED GROUP:
     func deleteGroup(ofGroupKey key: String, completion: @escaping (_ status: Bool) -> ()){
         
@@ -295,8 +252,6 @@ class DataService {
         REF_FRIENDS.child(uid).child(key).removeValue()
         completion(true)
     }
-    
-    
     
 }
 

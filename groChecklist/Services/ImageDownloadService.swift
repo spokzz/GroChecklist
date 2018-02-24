@@ -34,11 +34,7 @@ class ImageDownloadService {
             dataTask.forEach({$0.cancel()})
             downloadData.forEach({$0.cancel()})
         }
-        
-        
     }
-
-    
     
     
 }

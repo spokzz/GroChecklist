@@ -7,6 +7,8 @@
 //
 
 import UIKit
+import FirebaseAuth
+import GoogleSignIn
 
 class LoginVC: UIViewController {
 
@@ -17,7 +19,10 @@ class LoginVC: UIViewController {
     //VIEW DID LOAD:
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         topViewHeight.editLoginVCColorGradientHeight()
+        GIDSignIn.sharedInstance().uiDelegate = self
+        GIDSignIn.sharedInstance().delegate = self
         
     }
     
@@ -33,16 +38,13 @@ class LoginVC: UIViewController {
         application.statusBarStyle = .default
     }
 
+    //LOGIN WITH GOOGLE BUTTON PRESSED:
     @IBAction func loginWithGooglePressed(_ sender: UIButton) {
         
-        
+        GIDSignIn.sharedInstance().signIn()
     }
     
-    @IBAction func loginWithPhonePressed(_ sender: UIButton) {
-        
-        
-    }
-    
+    //LOGIN BY EMAIL BUTTON PRESSED:
     @IBAction func loginByEmailPressed(_ sender: UIButton) {
         
         guard let emailLoginVC = storyboard?.instantiateViewController(withIdentifier: "emailLoginVC") as? EmailLoginVC else {return }
@@ -51,6 +53,7 @@ class LoginVC: UIViewController {
         
     }
     
+    //SIGN UP BUTTON PRESSED:
     @IBAction func signUpButtonPressed(_ sender: UIButton) {
         
         guard let emailLoginVC = storyboard?.instantiateViewController(withIdentifier: "emailLoginVC") as? EmailLoginVC else {return }
@@ -59,9 +62,57 @@ class LoginVC: UIViewController {
         
     }
     
+    //CLOSE BUTTON PRESSED:
     @IBAction func closeButtonPressed(_ sender: UIButton) {
         
         dismiss(animated: true, completion: nil)
     }
     
 }
+
+//GOOGLE SIGN IN DELEGATE:
+extension LoginVC: GIDSignInDelegate, GIDSignInUIDelegate {
+    
+    func sign(_ signIn: GIDSignIn!, didSignInFor user: GIDGoogleUser!, withError error: Error!) {
+        
+        if let error = error {
+            print("ERROR IN GOOGLE SIGN IN", error)
+            return
+        }
+        
+        guard let authenication = user.authentication else {return}
+        let credential = GoogleAuthProvider.credential(withIDToken: authenication.idToken, accessToken: authenication.accessToken)
+        Auth.auth().signIn(with: credential) { (user, error) in
+            if let error = error {
+                print("Error in google sign in: ", error)
+                return
+            }
+            
+            if let user = user {
+                let userData = ["provider": user.providerID, "email": user.email!]
+                DataService.instance.createDBUser(uid: user.uid, userData: userData)
+                self.dismiss(animated: true, completion: nil)
+            }
+        }
+        
+    }
+
+    
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

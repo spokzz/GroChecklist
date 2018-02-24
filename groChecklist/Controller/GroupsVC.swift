@@ -18,15 +18,18 @@ class GroupsVC: UIViewController {
     private var groupsArray = [Groups]()
     private var spinner: UIActivityIndicatorView!
     
+    //VIEW DID LOAD:
     override func viewDidLoad() {
         super.viewDidLoad()
 
         topViewHeight.editTopViewHeight()
         groupTableView.delegate = self
         groupTableView.dataSource = self
+        registerForPreviewing(with: self, sourceView: groupTableView)
         addSpinner()
     }
     
+    //VIEW WILL APPEAR:
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
@@ -41,43 +44,11 @@ class GroupsVC: UIViewController {
         self.spinner.removeFromSuperview()
     }
     
-    //CHECKS IF USER IS NIL OR NOT:
-    private func checkUserPresence() {
-        
-        if Auth.auth().currentUser?.uid != nil {
-            groupTableView.isHidden = false
-            informationStackView.isHidden = true
-            DataService.instance.getAllGroups { (allGroups) in
-                
-                if allGroups.isEmpty {
-                    self.groupTableView.isHidden = true
-                    self.informationStackView.isHidden = false
-                    
-                } else {
-                    self.groupsArray = allGroups
-                    self.groupTableView.isHidden = false
-                    self.informationStackView.isHidden = true
-                    self.groupTableView.reloadData()
-                    
-                }
-                self.spinner.removeFromSuperview()
-            }
-        }  else {
-            groupTableView.isHidden = true
-            informationStackView.isHidden = false
-            self.spinner.removeFromSuperview()
-        }
-
-        
-        
-    }
-
     //ADD GROUP BUTTON PRESSED:
     @IBAction func addButtonPressed(_ sender: UIButton) {
         
         //If nobody has loggedIn yet or it's logged out.
         if Auth.auth().currentUser == nil {
-           
             guard let loginVC = storyboard?.instantiateViewController(withIdentifier: "loginVC") else {return}
             present(loginVC, animated: true, completion: nil)
         } else {
@@ -130,23 +101,14 @@ extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
         
         let groupToShow = groupsArray[indexPath.row]
         cell.dateLabel.text = groupToShow.groupCreatedDate
-        cell.totalLabel.text = "Total Amount:\(groupToShow.totalAmount)"
+        cell.totalLabel.text = "Total Amount: $\(groupToShow.totalAmount)"
         
         //Returns the friend images in cell
         for membersUID in groupToShow.members {
             if membersUID != Auth.auth().currentUser?.uid {
-                
-                DataService.instance.getUser(withUID: membersUID, completion: { (returnedUser) in
-                    if let userImageURL = returnedUser.profileImageURL {
-                        cell.friendImage.loadImageUsingCache(withUrlString: userImageURL)
-                    } else {
-                        cell.friendImage.image = UIImage(named: "userImage")
-                    }
-                })
+                getUser(ofMemberUID: membersUID, andUpdateCellOf: cell)
             }
-            
         }
-        
         return cell
     }
     
@@ -155,14 +117,37 @@ extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
         addAlertController(indexPath: indexPath, tableView: tableView)
     }
     
+}
+
+//3D TOUCH
+extension GroupsVC: UIViewControllerPreviewingDelegate {
+    
+    func previewingContext(_ previewingContext: UIViewControllerPreviewing, viewControllerForLocation location: CGPoint) -> UIViewController? {
+        
+        guard let indexPath = groupTableView.indexPathForRow(at: location), let cellInRow = groupTableView.cellForRow(at: indexPath) else {return nil}
+        guard let popVC = storyboard?.instantiateViewController(withIdentifier: "viewGroupItems") as? ViewGroupItems  else {return nil}
+        popVC.initData(groupPressed: self.groupsArray[indexPath.row])
+        previewingContext.sourceRect = cellInRow.contentView.frame
+        return popVC
+    }
+    
+    func previewingContext(_ previewingContext: UIViewControllerPreviewing, commit viewControllerToCommit: UIViewController) {
+        show(viewControllerToCommit, sender: self)
+    }
+    
+}
+
+
+//CUSTOM FUNCTIONS:
+extension GroupsVC {
     
     //ADD ALERT CONTROLLER ON SELECTED ROW:
-    func addAlertController(indexPath: IndexPath, tableView: UITableView) {
-     
+    private func addAlertController(indexPath: IndexPath, tableView: UITableView) {
+        
         let alertVC = UIAlertController(title: nil, message: groupsArray[indexPath.row].groupCreatedDate, preferredStyle: .actionSheet)
         
         //View Items of selected Group
-        let viewAction = UIAlertAction(title: "VIEW", style: .default) { (view) in
+        let viewAction = UIAlertAction(title: "View", style: .default) { (view) in
             
             guard let viewGroupItems = self.storyboard?.instantiateViewController(withIdentifier: "viewGroupItems") as? ViewGroupItems else {return}
             viewGroupItems.initData(groupPressed: self.groupsArray[indexPath.row])
@@ -170,46 +155,96 @@ extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
             
         }
         
-        //Edit Total:
-        let editTotalAction = UIAlertAction(title: "EDIT TOTAL", style: .default) { (editTotal) in
+        //More:
+        
+        let moreAction = UIAlertAction(title: "More", style: .default) { (moreButton) in
             
-            let alert = UIAlertController(title: "Edit Total:", message: "", preferredStyle: UIAlertControllerStyle.alert)
+            let moreAlertVC = UIAlertController(title: nil, message: self.groupsArray[indexPath.row].groupCreatedDate, preferredStyle: .actionSheet)
             
-            let saveAction = UIAlertAction(title: "Save", style: UIAlertActionStyle.default, handler: { (alertAction) in
-                let textField = alert.textFields![0] as UITextField
-                if textField.text != "" {
-                    if let totalPriceInDouble = Double(textField.text!) {
-                        let priceRoundUp = totalPriceInDouble.round(to: 2)
-                        DataService.instance.editTotalPrice(ofGroup: self.groupsArray[indexPath.row], newTotalPrice: "\(priceRoundUp)", completion: { (completed) in
+            //Edit Total:
+            let editTotalAction = UIAlertAction(title: "Edit Total", style: .default) { (editTotal) in
+                
+                let alert = UIAlertController(title: "Edit Total:", message: "", preferredStyle: UIAlertControllerStyle.alert)
+                
+                let saveAction = UIAlertAction(title: "Save", style: UIAlertActionStyle.default, handler: { (alertAction) in
+                    let textField = alert.textFields![0] as UITextField
+                    if textField.text != "" {
+                        if let totalPriceInDouble = Double(textField.text!) {
+                            let priceRoundUp = totalPriceInDouble.round(to: 2)
+                            DataService.instance.editTotalPrice(ofGroup: self.groupsArray[indexPath.row], newTotalPrice: "\(priceRoundUp)", completion: { (completed) in
+                                if completed {
+                                    DataService.instance.getAllGroups { (allGroups) in
+                                        self.groupsArray = allGroups
+                                        self.groupTableView.reloadData()
+                                    }
+                                }
+                            })
+                            
+                        }
+                    }
+                })
+                
+                alert.addTextField { (textField : UITextField!) -> Void in
+                    self.customView(oftextField: textField, buttonPressed: "editTotal")
+                }
+                
+                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+                
+                alert.addAction(saveAction)
+                alert.addAction(cancelAction)
+                self.present(alert, animated: true, completion: nil)
+            }
+            
+            //Edit Title:
+            let editTitleAction = UIAlertAction(title: "Edit Title", style: .default) { (editTitle) in
+                let alert = UIAlertController(title: "Edit Title:", message: "", preferredStyle: .alert)
+                
+                let saveAction = UIAlertAction(title: "Save", style: .default, handler: { (alertAction) in
+                    let textField = alert.textFields![0] as UITextField
+                    if textField.text != "" {
+                        DataService.instance.editTitle(ofGroup: self.groupsArray[indexPath.row], newTitle: textField.text!, completion: { (completed) in
                             if completed {
-                                DataService.instance.getAllGroups { (allGroups) in
+                                
+                                DataService.instance.getAllGroups(completion: { (allGroups) in
                                     self.groupsArray = allGroups
                                     self.groupTableView.reloadData()
-                                }
+                                })
+                                
                             }
                         })
                         
                     }
+                })
+                
+                alert.addTextField { (textField : UITextField!) -> Void in
+                    self.customView(oftextField: textField, buttonPressed: "editTitle")
                 }
-            })
-            
-            alert.addTextField { (textField : UITextField!) -> Void in
-                self.editTotalTextField(textField: textField)
+                
+                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+                
+                alert.addAction(saveAction)
+                alert.addAction(cancelAction)
+                self.present(alert, animated: true, completion: nil)
+                
             }
             
             let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
             
-            alert.addAction(saveAction)
-            alert.addAction(cancelAction)
-            self.present(alert, animated: true, completion: nil)
+            moreAlertVC.addAction(editTotalAction)
+            moreAlertVC.addAction(editTitleAction)
+            moreAlertVC.addAction(cancelAction)
+            
+            self.present(moreAlertVC, animated: true, completion: nil)
+            
         }
         
+        
         //Delete Groups:
-        let deleteAction = UIAlertAction(title: "DELETE", style: .destructive) { (delete) in
+        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { (delete) in
             
             DataService.instance.deleteGroup(ofGroupKey: self.groupsArray[indexPath.row].key, completion: { (success) in
                 if success {
-                    DataService.instance.getAllGroups { (allGroups) in
+                    DataService.instance.getAllGroups { [unowned self](allGroups) in
                         self.groupsArray = allGroups
                         self.groupTableView.reloadData()
                         if self.groupsArray.isEmpty {
@@ -222,10 +257,10 @@ extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
             
         }
         
-        let cancelAction = UIAlertAction(title: "CANCEL", style: .cancel, handler: nil)
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         
         alertVC.addAction(viewAction)
-        alertVC.addAction(editTotalAction)
+        alertVC.addAction(moreAction)
         alertVC.addAction(deleteAction)
         alertVC.addAction(cancelAction)
         
@@ -233,28 +268,76 @@ extension GroupsVC: UITableViewDelegate, UITableViewDataSource {
         
     }
     
-    
-}
-
-//UITEXTFIELD:
-extension GroupsVC {
-    
-    func editTotalTextField(textField: UITextField) {
+    //Custom View for alert Text Field.
+    private func customView(oftextField textField: UITextField, buttonPressed title: String) {
         
-        textField.keyboardType = UIKeyboardType.decimalPad
-        textField.leftViewMode = .always
-        let placeholderImageView = UIImageView(frame: CGRect(x: 3, y: 0, width: 15, height: 15))
-        placeholderImageView.image = UIImage(named: "dollar")
-        let placeholderView = UIView(frame: CGRect(x: 0, y: 0, width: 23, height: 18))
-        placeholderView.addSubview(placeholderImageView)
-        textField.leftView = placeholderView
-        textField.placeholder = "22.46"
+        switch title  {
+            
+        case "editTotal":
+            textField.keyboardType = UIKeyboardType.decimalPad
+            textField.leftViewMode = .always
+            let placeholderImageView = UIImageView(frame: CGRect(x: 3, y: 0, width: 15, height: 15))
+            placeholderImageView.image = UIImage(named:"dollar")
+            let placeholderView = UIView(frame: CGRect(x: 0, y: 0, width: 23, height: 18))
+            placeholderView.addSubview(placeholderImageView)
+            textField.leftView = placeholderView
+            textField.placeholder = "22.46"
+            
+        case "editTitle":
+            textField.keyboardType = UIKeyboardType.default
+            textField.leftViewMode = .always
+            textField.placeholder = "ThanksGiving Day"
+            let placeholderView = UIView(frame: CGRect(x: 0, y: 0, width: 6, height: 6))
+            textField.leftView = placeholderView
+            
+        default:
+            break
+        }
         
     }
     
+    //CHECKS IF USER IS NIL OR NOT:
+    private func checkUserPresence() {
+        
+        if Auth.auth().currentUser?.uid != nil {
+            groupTableView.isHidden = false
+            informationStackView.isHidden = true
+            DataService.instance.getAllGroups {(allGroups) in
+                
+                if allGroups.isEmpty {
+                    self.groupTableView.isHidden = true
+                    self.informationStackView.isHidden = false
+                    
+                } else {
+                    self.groupsArray = allGroups
+                    self.groupTableView.isHidden = false
+                    self.informationStackView.isHidden = true
+                    self.groupTableView.reloadData()
+                    
+                }
+                self.spinner.removeFromSuperview()
+            }
+        }  else {
+            groupTableView.isHidden = true
+            informationStackView.isHidden = false
+            self.spinner.removeFromSuperview()
+        }
+    }
+    
+    //RETURNS USER FROM FIREBASE DATABSE:
+    private func getUser(ofMemberUID membersUID: String, andUpdateCellOf cell: GroupsCell) {
+        
+        DataService.instance.getUser(withUID: membersUID, completion: { (returnedUser) in
+            if let userImageURL = returnedUser.profileImageURL {
+                cell.friendImage.loadImageUsingCache(withUrlString: userImageURL)
+            } else {
+                cell.friendImage.image = UIImage(named: "userImage")
+            }
+        })
+        
+    }
     
 }
-
 
 
 

@@ -12,7 +12,7 @@ extension Double {
     
     //It rounds the double numbers.
     func round(to places: Int) -> Double {
-        let divisor = pow(10.0, Double(places))
+        let divisor = pow(10.00, Double(places))
         return Darwin.round(self * divisor) / divisor
     }
     

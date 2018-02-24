@@ -31,7 +31,7 @@ extension NSLayoutConstraint {
         case "iphone 8", "iphone 8 Plus":
             self.constant = 125
         case "iphone X":
-            self.constant = 145
+            self.constant = 150
         default:
             self.constant = 125
             return
@@ -45,14 +45,15 @@ extension NSLayoutConstraint {
         
         switch deviceType! {
         case "iphone 8", "iphone 8 Plus":
-            self.constant = 250
+            self.constant = 230
         case "iphone X":
-            self.constant = 270
-        default:
             self.constant = 250
+        default:
+            self.constant = 230
             return
         }
     }
+    
     
     func changeEmailLoginColorGradientHeight() {
         

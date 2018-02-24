@@ -48,6 +48,12 @@ class AddUsersVC: UIViewController {
     }
     
     //VIEW WILL DISAPPEAR:
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        searchTextField.endEditing(true)
+    }
+    
+    //VIEW WILL DISAPPEAR:
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         self.spinner.removeFromSuperview()
@@ -57,52 +63,6 @@ class AddUsersVC: UIViewController {
        ImageDownloadService.instance.removeSession()
     }
     
-    //CHECK IF USER IS LOGIN OR NOT:
-    func checkUserPresence() {
-        
-        if Auth.auth().currentUser?.email != nil {
-            
-            loginInfoLabel.isHidden = true
-            addUserTableView.isHidden = false
-            searchTextField.isEnabled = true
-            DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) { (returnedFriendList) in
-                if returnedFriendList.isEmpty == false {
-                    
-                    DataService.instance.getEmail(forUID: returnedFriendList[0].addedFriendUID, completion: { (returnedEmail) in
-                        self.members = returnedEmail
-                        self.status = returnedFriendList[0].status
-                    })
-                }
-            }
-            
-        } else {
-            
-            loginInfoLabel.isHidden = false
-            addUserTableView.isHidden = true
-            searchTextField.isEnabled = false
-        }
-        
-    }
-    
-    //WHEN USER START TYPING:
-    @objc func textFieldDidChange() {
-        spinner.startAnimating()
-        
-        if searchTextField.text == "" {
-            userArray = []
-           // ImageDownloadService.instance.removeSession()
-            addUserTableView.reloadData()
-            self.spinner.stopAnimating()
-        } else {
-            self.spinner.startAnimating()
-                DataService.instance.getEmailAndUserImage(forSearchQuery: searchTextField.text!, completion: { (returnedUser) in
-                    self.userArray = returnedUser
-                    self.spinner.stopAnimating()
-                    self.addUserTableView.reloadData()
-                })
-        }
-        
-    }
     
     //BACK BUTTON PRESSED:
     @IBAction func backButtonPressed(_ sender: UIButton) {
@@ -120,7 +80,7 @@ class AddUsersVC: UIViewController {
     }
     
     //USER TAPPED ON SCREEN:
-    @objc func tappedOnScreen() {
+    @objc private func tappedOnScreen() {
         searchTextField.endEditing(true)
     }
     
@@ -136,9 +96,7 @@ class AddUsersVC: UIViewController {
 }
 
 //UITEXTFIELD:
-extension AddUsersVC: UITextFieldDelegate {
-    
-}
+extension AddUsersVC: UITextFieldDelegate { }
 
 //TABLE VIEW:
 extension AddUsersVC: UITableViewDataSource, UITableViewDelegate {
@@ -147,108 +105,41 @@ extension AddUsersVC: UITableViewDataSource, UITableViewDelegate {
        return userArray.count
     }
     
+    //cell for row
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "addUserCell", for: indexPath) as? AddUserCell else {return UITableViewCell()}
         let user = userArray[indexPath.row]
         
         cell.userEmail.text = user.email
         cell.email = user.email
-        
-        //If there is user image(url) on database.
-        if let imageString = user.profileImageURL {
-            
-//            let url = URL(string: imageString)
-//            ImageDownloadService.instance.downloadImages(withUrl: url!, completion: { (returnedImageData) in
-//
-//                let userProfileImage = UIImage(data: returnedImageData)
-//                DispatchQueue.main.async {
-//                    cell.profileImage.image = userProfileImage
-//                }
-//            })
-            
-            cell.profileImage.loadImageUsingCache(withUrlString: imageString)
-            
-        } else {
-            
-            DispatchQueue.main.async {
-                cell.profileImage.image = UIImage(named: "userImage")
-            }
-        }
+        updateImage(ofUser: user, andCell: cell)
         
         //Checks if user has friend or not on the search list.
         if userArray[indexPath.row].email == members {
         
             switch status {
-                
-            case 0:
-                cell.addButton.setTitle("Pending", for: .normal)
+            case 0, 1, 2:
                 cell.addButton.isHidden = true
                 cell.delegate = self
-                
-            case 1, 2:
-                cell.addButton.isHidden = true
-                cell.delegate = self
-                
             default:
                 return UITableViewCell()
             }
-            
         } else {
             cell.addButton.isHidden = false
             cell.delegate = self
         }
-        
         return cell
-        
-      /*  //Check if the email is added or not.
-            if userArray[indexPath.row].email == members {
-                
-                
-                if status == 0 {
-                    
-                    cell.configureCell(profileImageData: user.imageData, userEmail: user.email)
-                        cell.addButton.setTitle("Pending", for: .normal)
-                        cell.addButton.isHidden = true
-                        cell.delegate = self
-                    
-                    
-                } else if status == 1 {
-                    
-                    cell.configureCell(profileImageData: user.imageData , userEmail: user.email)
-                        cell.addButton.isHidden = true
-                        cell.delegate = self
-                
-                    
-                } else if status == 2 {
-                    
-                    cell.configureCell(profileImageData: user.imageData , userEmail: user.email)
-                        cell.addButton.isHidden = true
-                        cell.delegate = self
-                    
-                }
-            } else {
-               
-                cell.configureCell(profileImageData: user.imageData, userEmail: user.email)
-                    cell.addButton.isHidden = false
-                    cell.delegate = self
-                
-            }
-        
-        
-        return cell
-    
-        
-    }
-   */
   
 }
+    
 }
 
 //WHEN USER TAP ADD BUTTON:
 extension AddUsersVC: AddUserDelegate {
     
     func addUsers(withEmail: String) {
-        DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) { (returnedFriendList) in
+        DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) {[unowned self] (returnedFriendList) in
             
             if returnedFriendList.isEmpty {
                 
@@ -295,6 +186,82 @@ extension AddUsersVC: AddUserDelegate {
     }
     }
 
+//CUSTOM FUNCTIONS:
+extension AddUsersVC {
+    
+    //CHECK IF USER IS LOGIN OR NOT:
+    func checkUserPresence() {
+        
+        DispatchQueue.global(qos: .userInteractive).async {
+            
+            if Auth.auth().currentUser?.email != nil {
+                
+                DispatchQueue.main.async {
+                    self.loginInfoLabel.isHidden = true
+                    self.addUserTableView.isHidden = false
+                    self.searchTextField.isEnabled = true
+                }
+                DataService.instance.getFriendsList(userID: (Auth.auth().currentUser?.uid)!) {(returnedFriendList) in
+                    if returnedFriendList.isEmpty == false {
+                        DataService.instance.getEmail(forUID: returnedFriendList[0].addedFriendUID, completion: { (returnedEmail) in
+                            self.members = returnedEmail
+                            self.status = returnedFriendList[0].status
+                        })
+                    }
+                }
+            } else {
+                
+                DispatchQueue.main.async {
+                    self.loginInfoLabel.isHidden = false
+                    self.addUserTableView.isHidden = true
+                    self.searchTextField.isEnabled = false
+                }
+               
+            }
+            
+        }
+    }
+    
+    //WHEN USER START TYPING:
+    @objc private func textFieldDidChange() {
+        spinner.startAnimating()
+        
+        if searchTextField.text == "" {
+            userArray = []
+            addUserTableView.reloadData()
+            self.spinner.stopAnimating()
+        } else {
+            self.spinner.startAnimating()
+            DataService.instance.getEmailAndUserImage(forSearchQuery: searchTextField.text!, completion: {(returnedUser) in
+                self.userArray = returnedUser
+                self.spinner.stopAnimating()
+                self.addUserTableView.reloadData()
+            })
+        }
+        
+    }
+    
+    //IT CHECKS THE USER IMAGE ON FIREBASE STORAGE AND UPDATE IT ON CELL:
+    func updateImage(ofUser user: Users, andCell cell: AddUserCell) {
+        
+        //If there is user image(url) on database.
+        if let imageString = user.profileImageURL, let url = URL(string: imageString) {
+            
+            // cell.profileImage.loadImageUsingCache(withUrlString: imageString)
+            
+            ImageDownloadService.instance.downloadImages(withUrl: url, completion: { (imageData) in
+                cell.profileImage.image = UIImage(data: imageData)
+            })
+            
+        } else {
+            
+            cell.profileImage.image = UIImage(named: "userImage")
+        }
+        
+    }
+    
+    
+}
 
 
 
